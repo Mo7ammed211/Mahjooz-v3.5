@@ -1469,9 +1469,17 @@ function ph43_renderProductCard(p, storeId, u) {
   const hasTiers = p.tiers && p.tiers.length > 0;
   const cartItems = ph43_getCart().filter(i => i.productId === p.id || i.productId.startsWith(p.id + '_'));
   const inCartQty = cartItems.reduce((sum, item) => sum + item.qty, 0);
-  
+
+  const activeOffer = typeof ph_getActiveOffer === 'function' ? ph_getActiveOffer(p.id) : null;
+  const offerPct = activeOffer ? (activeOffer.discountPercent || (activeOffer.originalPrice > 0 ? Math.round(((activeOffer.originalPrice - activeOffer.discountedPrice) / activeOffer.originalPrice) * 100) : 0)) : 0;
+
   let priceHtml = '';
-  if (hasTiers) {
+  if (activeOffer && typeof ph_offerPriceHtml === 'function') {
+    const fallback = hasTiers
+      ? `<span style="font-size:11px;font-weight:600;color:var(--text-muted)">يبدأ من </span>${Math.min(...p.tiers.map(t => t.price || 0)).toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span>`
+      : `${(p.price || 0).toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span>`;
+    priceHtml = ph_offerPriceHtml(activeOffer, fallback);
+  } else if (hasTiers) {
     const minPrice = Math.min(...p.tiers.map(t => t.price || 0));
     priceHtml = `<span style="font-size:11px;font-weight:600;color:var(--text-muted)">يبدأ من </span>${minPrice.toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span>`;
   } else {
@@ -1499,7 +1507,8 @@ function ph43_renderProductCard(p, storeId, u) {
     : '';
 
   return `
-  <div class="ph43-product-card">
+  <div class="ph43-product-card" style="position:relative">
+    ${activeOffer && typeof ph_offerBadgeHtml === 'function' ? ph_offerBadgeHtml(offerPct) : ''}
     <div onclick="ph43_showProductDetails('${p.id}', '${storeId}')" style="cursor:pointer">
       ${p.imageBase64
         ? `<img src="${p.imageBase64}" class="ph43-product-img" alt="${escAttr(p.name)}">`

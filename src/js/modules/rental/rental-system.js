@@ -791,8 +791,15 @@ window.ph_rentalRenderStorePage = function() {
         </div>
         ${products.length ? `
         <div class="ph43-product-grid">
-          ${products.map(p => `
-          <div class="ph43-product-card">
+          ${products.map(p => {
+          const _rOffer = typeof ph_getActiveOffer === 'function' ? ph_getActiveOffer(p.id) : null;
+          const _rPct = _rOffer ? (_rOffer.discountPercent || (_rOffer.originalPrice > 0 ? Math.round(((_rOffer.originalPrice - _rOffer.discountedPrice) / _rOffer.originalPrice) * 100) : 0)) : 0;
+          const _rPriceHtml = _rOffer && typeof ph_offerPriceHtml === 'function'
+            ? ph_offerPriceHtml(_rOffer, `${(p.price||0).toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span>`)
+            : `${(p.price||0).toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span>`;
+          return `
+          <div class="ph43-product-card" style="position:relative">
+            ${_rOffer && typeof ph_offerBadgeHtml === 'function' ? ph_offerBadgeHtml(_rPct) : ''}
             <div onclick="ph_rentalShowBookingModal('${p.id}', '${storeId}')" style="cursor:pointer">
               ${p.imageBase64 ? `<img src="${p.imageBase64}" class="ph43-product-img">` : `<div class="ph43-product-img-placeholder">📦</div>`}
               <div class="ph43-product-body" style="padding-bottom:8px">
@@ -802,10 +809,11 @@ window.ph_rentalRenderStorePage = function() {
               </div>
             </div>
             <div class="ph43-product-footer" style="padding: 0 12px 12px 12px;">
-              <div class="ph43-product-price">${(p.price||0).toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">ريال</span></div>
-              <button class="ph43-add-cart-btn" data-rental-cart-id="${p.id}" style="background:var(--primary)" onclick="typeof rental_addToCart==='function'?rental_addToCart('${p.id}','${storeId}'):ph_rentalShowBookingModal('${p.id}','${storeId}')">🛒 أضف للسلة</button>
+              <div class="ph43-product-price">${_rPriceHtml}</div>
+              <button class="ph43-add-cart-btn" data-rental-cart-id="${p.id}" style="background:var(--primary)" onclick="typeof rental_addToCart==='function'?rental_addToCart('${p.id}','${storeId}'):ph_rentalShowBookingModal('${p.id}','${storeId}')">${_rOffer ? '🏷️ احجز بالسعر المخفض' : '🛒 أضف للسلة'}</button>
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
         </div>` : `
         <div class="empty-state" style="padding:60px 0">
           <div class="empty-icon">📦</div>

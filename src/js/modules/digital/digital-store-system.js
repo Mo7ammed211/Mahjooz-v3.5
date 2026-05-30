@@ -951,11 +951,33 @@ window.ph45_renderDigitalCat = function(catId) {
   `;
 };
 
+function _ph45_renderProductCard(p, storeId) {
+  const offer = typeof ph_getActiveOffer === 'function' ? ph_getActiveOffer(p.id) : null;
+  const pct = offer ? (offer.discountPercent || (offer.originalPrice > 0 ? Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100) : 0)) : 0;
+  const fallbackPrice = '<div style="font-size:20px;font-weight:800;color:var(--primary)">' + p.price + ' <span style="font-size:12px;color:var(--text-muted)">ريال</span></div>';
+  const priceHtml = offer && typeof ph_offerPriceHtml === 'function' ? ph_offerPriceHtml(offer, fallbackPrice) : fallbackPrice;
+  const badge = offer && typeof ph_offerBadgeHtml === 'function' ? ph_offerBadgeHtml(pct) : '';
+  const btnLabel = offer ? '🏷️ أضف بالسعر المخفض' : '🛒 إضافة للسلة';
+  const border = offer ? 'rgba(239,68,68,0.3)' : 'var(--glass-border)';
+  const waND = (AppData.platformSettings && AppData.platformSettings.whatsappNumber ? AppData.platformSettings.whatsappNumber : '').replace(/\D/g, '');
+  const waLink = waND ? '<a class="btn-wa-inquiry btn-wa-inquiry--full" style="margin-top:8px" href="https://wa.me/' + waND + '?text=' + encodeURIComponent('أهلاً، أريد الاستفسار عن: ' + p.name) + '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span>استفسر عبر واتساب</span></a>' : '';
+  return '<div style="background:var(--bg-card);border:1px solid ' + border + ';border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">'
+    + badge
+    + '<div style="margin-bottom:16px"><div style="font-weight:800;font-size:16px;margin-bottom:8px">' + escHtml(p.name) + '</div>' + priceHtml + '</div>'
+    + '<button class="btn btn-primary" style="width:100%;border-radius:12px;font-weight:700" onclick="ph45_addToCart(\'' + p.id + '\', \'' + storeId + '\')">' + btnLabel + '</button>'
+    + waLink
+    + '</div>';
+}
+
 window.ph45_renderDigitalStore = function(storeId) {
   const store = (AppData.digitalStores||[]).find(s=>s.id===storeId);
   const prods = (AppData.digitalProducts||[]).filter(p=>p.storeId===storeId && p.active!==false);
   
   if (!store) return '';
+
+  const prodsHtml = prods.length
+    ? prods.map(p => _ph45_renderProductCard(p, storeId)).join('')
+    : '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">لا توجد منتجات حالياً</div>';
 
   let content = `
     <div style="margin-bottom:24px">
@@ -973,25 +995,7 @@ window.ph45_renderDigitalStore = function(storeId) {
     
     <h3 style="font-size:18px;margin-bottom:16px">📦 المنتجات المتاحة</h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
-      ${prods.map(p => `
-        <div style="background:var(--bg-card);border:1px solid var(--glass-border);border-radius:16px;padding:16px;display:flex;flex-direction:column;justify-content:space-between">
-          <div style="margin-bottom:16px">
-            <div style="font-weight:800;font-size:16px;margin-bottom:8px">${escHtml(p.name)}</div>
-            <div style="font-size:20px;font-weight:800;color:var(--primary)">${p.price} <span style="font-size:12px;color:var(--text-muted)">ريال</span></div>
-          </div>
-          <button class="btn btn-primary" style="width:100%;border-radius:12px;font-weight:700" onclick="ph45_addToCart('${p.id}', '${store.id}')">🛒 إضافة للسلة</button>
-          ${(() => {
-            const waND = (AppData.platformSettings?.whatsappNumber || '').replace(/\D/g,'');
-            return waND
-              ? `<a class="btn-wa-inquiry btn-wa-inquiry--full" style="margin-top:8px" href="https://wa.me/${waND}?text=${encodeURIComponent('أهلاً، أريد الاستفسار عن: ' + p.name)}" target="_blank" rel="noopener">
-                   <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                   <span>استفسر عبر واتساب</span>
-                 </a>`
-              : '';
-          })()}
-        </div>
-      `).join('')}
-      ${prods.length === 0 ? '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">لا توجد منتجات حالياً</div>' : ''}
+      ${prodsHtml}
     </div>
   `;
   return `

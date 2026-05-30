@@ -6,6 +6,43 @@
 
 if (!AppData.offers) AppData.offers = [];
 
+// ─── دالة مساعدة: جلب العرض النشط لعنصر معيّن ────────
+window.ph_getActiveOffer = function (sourceId) {
+  if (!sourceId || !AppData.offers) return null;
+  const now = new Date();
+  return AppData.offers.find(o => {
+    if (!o.active || o.sourceId !== sourceId) return false;
+    if (o.expiresAt) {
+      const exp = o.expiresAt.toDate ? o.expiresAt.toDate() : new Date(o.expiresAt);
+      if (exp < now) return false;
+    }
+    return true;
+  }) || null;
+};
+
+// ─── دالة مساعدة: إنشاء HTML بادج الخصم ──────────────
+window.ph_offerBadgeHtml = function (pct, style) {
+  if (!pct || pct <= 0) return '';
+  return `<div style="position:absolute;top:10px;${style||'right:10px'};z-index:3;background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;font-weight:900;font-size:11px;border-radius:50%;width:46px;height:46px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(239,68,68,0.45);line-height:1.2;text-align:center;flex-direction:column;gap:0">
+    <span style="font-size:9px;line-height:1">خصم</span>
+    <span style="font-size:13px;font-weight:900;line-height:1">${pct}%</span>
+  </div>`;
+};
+
+// ─── دالة مساعدة: HTML عرض السعر مع الخصم ────────────
+window.ph_offerPriceHtml = function (offer, fallbackHtml, currency) {
+  if (!offer) return fallbackHtml;
+  const cur = currency || 'ريال';
+  const disc = offer.discountedPrice || 0;
+  const orig = offer.originalPrice || 0;
+  const save = orig > disc ? orig - disc : 0;
+  return `<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+    <span style="font-weight:900;color:#10b981;font-size:inherit">${disc.toLocaleString('ar-YE')} <span style="font-size:11px;font-weight:600;color:var(--text-muted)">${cur}</span></span>
+    ${orig ? `<span style="font-size:12px;color:var(--text-muted);text-decoration:line-through">${orig.toLocaleString('ar-YE')}</span>` : ''}
+    ${save > 0 ? `<span style="font-size:11px;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:5px;padding:1px 6px">وفّر ${save.toLocaleString('ar-YE')}</span>` : ''}
+  </div>`;
+};
+
 // ─── تحميل العروض عند loadAllData ─────────────────────
 const __ph_offersOriginal = window.loadAllData;
 window.loadAllData = async function () {
@@ -36,8 +73,8 @@ window.ph_offersRenderPage = function () {
 
   const filtered = filterSection === 'all' ? all : all.filter(o => o.sourceSection === filterSection);
 
-  const sectionIcons  = { bookings: '📅', services: '🔧', stores: '🏪' };
-  const sectionLabels = { bookings: 'الحجوزات', services: 'الخدمات المهنية', stores: 'المتاجر' };
+  const sectionIcons  = { bookings: '📅', services: '🔧', stores: '🏪', rentals: '🚗', digital: '⚡' };
+  const sectionLabels = { bookings: 'الحجوزات', services: 'الخدمات المهنية', stores: 'المتاجر', rentals: 'التأجير', digital: 'الرقمية' };
 
   const renderCard = (offer) => {
     const discount  = offer.discountPercent || (offer.originalPrice > 0 ? Math.round(((offer.originalPrice - offer.discountedPrice) / offer.originalPrice) * 100) : 0);
@@ -76,6 +113,8 @@ window.ph_offersRenderPage = function () {
     { k: 'bookings', l: '📅 الحجوزات',         c: '#3b82f6' },
     { k: 'services', l: '🔧 الخدمات المهنية',  c: '#10b981' },
     { k: 'stores',   l: '🏪 المتاجر',           c: '#f59e0b' },
+    { k: 'rentals',  l: '🚗 التأجير',           c: '#ec4899' },
+    { k: 'digital',  l: '⚡ الرقمية',           c: '#06b6d4' },
   ];
 
   const totalSavings = filtered.reduce((s, o) => s + Math.max(0, (o.originalPrice || 0) - (o.discountedPrice || 0)), 0);
@@ -129,8 +168,8 @@ window.renderAdminOffers = function () {
   const now = new Date();
   const offers = AppData.offers || [];
 
-  const sectionLabels = { bookings: '📅 الحجوزات', services: '🔧 الخدمات', stores: '🏪 المتاجر' };
-  const sourceTypeLabels = { service: 'خدمة', store_product: 'منتج متجر', manual: 'يدوي' };
+  const sectionLabels = { bookings: '📅 الحجوزات', services: '🔧 الخدمات', stores: '🏪 المتاجر', rentals: '🚗 التأجير', digital: '⚡ الرقمية' };
+  const sourceTypeLabels = { service: 'خدمة', store_product: 'منتج متجر', rental_product: 'منتج تأجير', digital_product: 'منتج رقمي', manual: 'يدوي' };
 
   const activeOffers  = offers.filter(o => o.active && (!o.expiresAt || (o.expiresAt.toDate ? o.expiresAt.toDate() : new Date(o.expiresAt)) > now));
   const expiredOffers = offers.filter(o => o.expiresAt && (o.expiresAt.toDate ? o.expiresAt.toDate() : new Date(o.expiresAt)) <= now);
@@ -199,6 +238,8 @@ window.renderAdminOffers = function () {
         { n: offers.filter(o => o.sourceSection === 'bookings').length,                l: 'عروض الحجوزات',       c: '#3b82f6' },
         { n: offers.filter(o => o.sourceSection === 'services').length,                l: 'عروض الخدمات',        c: '#8b5cf6' },
         { n: offers.filter(o => o.sourceSection === 'stores').length,                  l: 'عروض المتاجر',        c: '#f59e0b' },
+        { n: offers.filter(o => o.sourceSection === 'rentals').length,                 l: 'عروض التأجير',        c: '#ec4899' },
+        { n: offers.filter(o => o.sourceSection === 'digital').length,                 l: 'عروض الرقمية',        c: '#06b6d4' },
       ].map(s => `
         <div style="background:var(--bg-card);border:1px solid var(--glass-border);border-radius:14px;padding:14px;text-align:center">
           <div style="font-size:26px;font-weight:900;color:${s.c}">${s.n}</div>
@@ -255,6 +296,8 @@ window.ph_editOfferModal = function (offerId) {
     { v: 'bookings', l: '📅 الحجوزات' },
     { v: 'services', l: '🔧 الخدمات المهنية' },
     { v: 'stores',   l: '🏪 المتاجر' },
+    { v: 'rentals',  l: '🚗 التأجير' },
+    { v: 'digital',  l: '⚡ المنتجات الرقمية' },
   ];
   openModal(`
     <div class="modal-header"><h2 class="modal-title">✏️ تعديل العرض</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -307,6 +350,8 @@ window.ph_showAddOfferModal = function () {
     { v: 'bookings', l: '📅 الحجوزات' },
     { v: 'services', l: '🔧 الخدمات المهنية' },
     { v: 'stores',   l: '🏪 المتاجر' },
+    { v: 'rentals',  l: '🚗 التأجير' },
+    { v: 'digital',  l: '⚡ المنتجات الرقمية' },
   ];
   openModal(`
     <div class="modal-header"><h2 class="modal-title">➕ إضافة عرض يدوي</h2><button class="modal-close" onclick="closeModal()">✕</button></div>
