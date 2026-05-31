@@ -930,22 +930,23 @@ function renderStaticPage() {
 let isNavigatingFromHistory = false;
 
 window.addEventListener('popstate', async (event) => {
-  // ── 1. اعتراض حدث الرجوع لإغلاق مودال الإدارة الجانبي إذا كان مفتوحاً ──
+  // ── 1. اعتراض زر الرجوع لإغلاق درج الإدارة الجانبي إذا كان مفتوحاً ──
+  //       نُغلق الدرج ونُعيد دفع الحالة الحالية حتى لا يُستهلك إدخال التاريخ
   const adminSidebar = document.getElementById('adminSidebar');
   if (adminSidebar && adminSidebar.classList.contains('open')) {
-    window._adminSidebarJustClosed = true;
     if (typeof window.closeAdminSidebar === 'function') {
-      window.closeAdminSidebar(true);
+      window.closeAdminSidebar();
     } else {
       adminSidebar.classList.remove('open');
-      const overlay = document.getElementById('adminSidebarOverlay');
-      if (overlay) overlay.classList.remove('open');
+      document.getElementById('adminSidebarOverlay')?.classList.remove('open');
       document.body.style.overflow = '';
     }
-    return;
-  }
-  if (window._adminSidebarJustClosed) {
-    window._adminSidebarJustClosed = false;
+    // أعِد دفع الحالة الحالية لإبقاء موضع التاريخ كما هو
+    const currentTab = (typeof State !== 'undefined' ? State.adminTab : null) || 'hub_stats';
+    const restoredUrl = new URL(window.location);
+    restoredUrl.searchParams.set('page', 'admin');
+    restoredUrl.searchParams.set('tab', currentTab);
+    history.pushState({ page: 'admin', params: { tab: currentTab } }, '', restoredUrl);
     return;
   }
 

@@ -44,6 +44,27 @@ function _adminHubForTab(tab) {
   return m[tab] || 'hub_stats';
 }
 
+// ─── Breadcrumb Renderer ──────────────────────────────────────
+function _renderAdminBreadcrumb(activeTab, groups) {
+  const hubId    = _adminHubForTab(activeTab);
+  const hub      = groups.find(g => g.id === hubId);
+  const hubItem  = groups.find(g => g.items.some(i => i.k === activeTab));
+  const tabItem  = (hubItem || hub)?.items.find(i => i.k === activeTab);
+  const tabLabel = tabItem?.label || activeTab;
+  const tabIcon  = tabItem?.icon  || '📄';
+  const hubLabel = hub?.title || hubId;
+  const hubIcon  = hub?.icon  || '🏠';
+  return `
+  <nav class="admin-breadcrumb" aria-label="مسار التنقل">
+    <button class="adm-bc-home" onclick="setAdminTab('hub_stats')" title="الصفحة الرئيسية">🏠</button>
+    <span class="adm-bc-sep">›</span>
+    <button class="adm-bc-item" onclick="setAdminTab('${hubId}')">${hubIcon} ${hubLabel}</button>
+    <span class="adm-bc-sep">›</span>
+    <span class="adm-bc-current">${tabIcon} ${tabLabel}</span>
+    <button class="adm-bc-back" onclick="setAdminTab('${hubId}')">← رجوع</button>
+  </nav>`;
+}
+
 // ─── Hub Page Renderer ────────────────────────────────────────
 function _renderHubPage(hubId, groups) {
   const hub = groups.find(g => g.id === hubId);
@@ -245,7 +266,7 @@ window.renderAdmin = function () {
         </aside>
 
         <main class="admin-main">
-          ${!activeTab.startsWith('hub_') ? `<div style="margin-bottom:16px"><button class="back-btn" onclick="setAdminTab('${_adminHubForTab(activeTab)}')">→ رجوع للقائمة</button></div>` : ''}
+          ${!activeTab.startsWith('hub_') ? _renderAdminBreadcrumb(activeTab, groups) : ''}
           ${activeTab.startsWith('hub_')        ? _renderHubPage(activeTab, groups) : ''}
           ${activeTab === 'dashboard'            ? renderAdminDash() : ''}
           ${activeTab === 'users'               ? renderAdminUsers() : ''}
@@ -320,14 +341,11 @@ function openAdminSidebar() {
   document.body.style.overflow = 'hidden';
   _restoreSidebarGroupState();
   setTimeout(_scrollToActiveSidebarTab, 380);
-  // ── دعم زر الرجوع في الهاتف ──
-  if (!history.state || !history.state._adminSidebarOpen) {
-    history.pushState({ _adminSidebarOpen: true }, '');
-  }
+  // لا نُضيف إدخالاً في التاريخ للـ sidebar — يُعالَج في popstate مباشرةً
 }
 window.openAdminSidebar = openAdminSidebar;
 
-function closeAdminSidebar(_fromPopstate) {
+function closeAdminSidebar() {
   const sidebar  = document.getElementById('adminSidebar');
   const overlay  = document.getElementById('adminSidebarOverlay');
   const hint     = document.getElementById('adminSwipeHint');
@@ -335,22 +353,8 @@ function closeAdminSidebar(_fromPopstate) {
   if (overlay)  overlay.classList.remove('open');
   if (hint)     hint.style.opacity = '0.5';
   document.body.style.overflow = '';
-  // إذا أُغلق يدوياً (لا popstate) نرجع في التاريخ لإزالة الـ state
-  if (!_fromPopstate && history.state && history.state._adminSidebarOpen) {
-    window._adminSidebarJustClosed = true;
-    history.back();
-  }
 }
 window.closeAdminSidebar = closeAdminSidebar;
-
-// ── زر الرجوع في الهاتف يُغلق الدرج ──
-window.addEventListener('popstate', function() {
-  const sidebar = document.getElementById('adminSidebar');
-  if (sidebar && sidebar.classList.contains('open')) {
-    window._adminSidebarJustClosed = true;
-    closeAdminSidebar(true);
-  }
-});
 
 // ── طي/فتح مجموعة ──
 window.toggleSidebarGroup = function(groupId) {
@@ -433,17 +437,15 @@ document.addEventListener('keydown', function(e) {
 
 async function setAdminTab(tab) {
   State.adminSearch = '';
-  const sidebarOpen = document.getElementById('adminSidebar')?.classList.contains('open');
-  if (sidebarOpen) {
-    const sidebar = document.getElementById('adminSidebar');
-    const overlay = document.getElementById('adminSidebarOverlay');
-    if (sidebar) { sidebar.classList.remove('open'); sidebar.classList.remove('dragging'); }
-    if (overlay) overlay.classList.remove('open');
-    document.body.style.overflow = '';
+  // إغلاق الـ sidebar إن كان مفتوحاً (بدون التأثير على التاريخ)
+  const sidebar = document.getElementById('adminSidebar');
+  if (sidebar && sidebar.classList.contains('open')) {
+    closeAdminSidebar();
   }
   window._adminNavFromTab = true;
   document.body.style.overflow = '';
-  await navigate('admin', { tab }, sidebarOpen);
+  // دائماً pushState لضمان تاريخ تنقّل خطوة بخطوة
+  await navigate('admin', { tab }, false);
 }
 
 // ── فتح تلقائي للدرج عند دخول لوحة المدير على الموبايل ──
