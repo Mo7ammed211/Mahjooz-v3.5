@@ -69,8 +69,10 @@ window.loadAllData = async function() {
 
 // ─── ADMIN: PLATFORM SETTINGS ──────────────────────────
 function renderAdminPlatformSettings() {
-  const fee   = AppData.platformSettings?.deliveryFee    || 15;
-  const waNum = AppData.platformSettings?.whatsappNumber || '';
+  const fee             = AppData.platformSettings?.deliveryFee          || 15;
+  const waNum           = AppData.platformSettings?.whatsappNumber        || '';
+  const walletThreshold = AppData.platformSettings?.walletAlertThreshold  ?? 500;
+  const purchaseThresh  = AppData.platformSettings?.purchaseAlertThreshold ?? 1000;
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
       <h2>⚙️ الإعدادات العامة للمنصة</h2>
@@ -106,7 +108,7 @@ function renderAdminPlatformSettings() {
     </div>
 
     <!-- ═══ رسوم التوصيل ═══ -->
-    <div class="settings-card" style="max-width: 600px;">
+    <div class="settings-card" style="max-width:600px;margin-bottom:20px;">
       <h3 style="margin-bottom:16px">رسوم التوصيل</h3>
       <p style="color:var(--text-secondary);font-size:14px;margin-bottom:16px">
         تعيين رسوم التوصيل الافتراضية التي سيتم إضافتها على طلبات الخدمات والمنتجات.
@@ -117,21 +119,92 @@ function renderAdminPlatformSettings() {
       </div>
       <button class="btn btn-primary" onclick="savePlatformSettings()">حفظ الإعدادات</button>
     </div>
+
+    <!-- ═══ حدود التنبيهات المالية ═══ -->
+    <div class="settings-card" style="max-width:600px;border:1.5px solid rgba(124,58,237,0.3);background:rgba(124,58,237,0.04)">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(124,58,237,0.15);display:flex;align-items:center;justify-content:center;font-size:22px">🔔</div>
+        <div>
+          <h3 style="margin:0 0 2px;font-size:16px">حدود التنبيهات المالية</h3>
+          <p style="margin:0;color:var(--text-secondary);font-size:13px">يتلقى المدير إشعاراً فورياً عند تجاوز أي عملية للحد المحدد</p>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border);margin:14px 0"></div>
+
+      <!-- حد عمليات المحفظة الإدارية -->
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px">
+          💰 حد تنبيه عمليات المحفظة (إضافة / خصم / تعيين)
+        </label>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">
+          يُنبّه عند قيام المدير أو الموظف بعملية محفظة تتجاوز هذا المبلغ
+        </p>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="form-control" id="adm-wallet-alert-threshold" type="number" min="1"
+            value="${walletThreshold}"
+            placeholder="500"
+            style="flex:1;max-width:220px">
+          <span style="font-size:13px;color:var(--text-muted);white-space:nowrap">ريال يمني</span>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:rgba(124,58,237,0.8)">
+          ⚡ الإعداد الحالي: كل عملية ≥ <strong>${walletThreshold.toLocaleString('ar-YE')} ر.ي</strong> تُولّد تنبيهاً
+        </div>
+      </div>
+
+      <!-- حد عمليات الشراء والإيداعات -->
+      <div class="form-group" style="margin-bottom:18px">
+        <label class="form-label" style="display:flex;align-items:center;gap:6px">
+          🏦 حد تنبيه الشراء والإيداعات البنكية
+        </label>
+        <p style="font-size:12px;color:var(--text-muted);margin:0 0 8px">
+          يُنبّه عند استلام إيداع بنكي أو عملية شراء من عميل تتجاوز هذا المبلغ
+        </p>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input class="form-control" id="adm-purchase-alert-threshold" type="number" min="1"
+            value="${purchaseThresh}"
+            placeholder="1000"
+            style="flex:1;max-width:220px">
+          <span style="font-size:13px;color:var(--text-muted);white-space:nowrap">ريال يمني</span>
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:rgba(16,185,129,0.8)">
+          ⚡ الإعداد الحالي: كل إيداع ≥ <strong>${purchaseThresh.toLocaleString('ar-YE')} ر.ي</strong> يُولّد تنبيهاً
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="savePlatformSettings()" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);border:none">
+        💾 حفظ حدود التنبيهات
+      </button>
+    </div>
   `;
 }
 window.renderPh17Settings = renderAdminPlatformSettings;
 
 window.savePlatformSettings = async function() {
-  const fee   = parseFloat(document.getElementById('adm-delivery-fee')?.value || '15');
-  const waRaw = (document.getElementById('adm-wa-number')?.value || '').trim();
-  const waNum = waRaw.replace(/\D/g, '');
+  const fee             = parseFloat(document.getElementById('adm-delivery-fee')?.value || '15');
+  const waRaw           = (document.getElementById('adm-wa-number')?.value || '').trim();
+  const waNum           = waRaw.replace(/\D/g, '');
+  const walletThreshold = parseFloat(document.getElementById('adm-wallet-alert-threshold')?.value || '500');
+  const purchaseThresh  = parseFloat(document.getElementById('adm-purchase-alert-threshold')?.value || '1000');
 
-  if (isNaN(fee) || fee < 0) { toast('يرجى إدخال مبلغ رسوم صحيح', 'error'); return; }
-  if (waRaw && waNum.length < 7) { toast('رقم الواتساب قصير جداً، تأكد من إدخاله مع رمز الدولة', 'error'); return; }
+  if (isNaN(fee) || fee < 0)             { toast('يرجى إدخال مبلغ رسوم توصيل صحيح', 'error'); return; }
+  if (waRaw && waNum.length < 7)         { toast('رقم الواتساب قصير جداً، تأكد من إدخاله مع رمز الدولة', 'error'); return; }
+  if (isNaN(walletThreshold) || walletThreshold < 1) { toast('يرجى إدخال حد تنبيه محفظة صحيح (1 على الأقل)', 'error'); return; }
+  if (isNaN(purchaseThresh)  || purchaseThresh  < 1) { toast('يرجى إدخال حد تنبيه شراء صحيح (1 على الأقل)', 'error'); return; }
 
-  const updates = { deliveryFee: fee, whatsappNumber: waNum };
+  const updates = {
+    deliveryFee:           fee,
+    whatsappNumber:        waNum,
+    walletAlertThreshold:  walletThreshold,
+    purchaseAlertThreshold: purchaseThresh,
+  };
   await fsUpdate('platform_settings', 'main', updates);
   AppData.platformSettings = { ...(AppData.platformSettings || {}), ...updates };
+
+  /* إعادة تهيئة مراقبات الإشعارات بالحدود الجديدة */
+  if (typeof window.wsecReloadThresholds === 'function') {
+    window.wsecReloadThresholds(walletThreshold, purchaseThresh);
+  }
+
   toast('✅ تم حفظ الإعدادات بنجاح', 'success');
   await render();
 }

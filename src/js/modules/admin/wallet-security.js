@@ -12,9 +12,14 @@
   'use strict';
 
   /* ── ثوابت الأمان ──────────────────────────────────────────── */
-  const LARGE_AMOUNT_THRESHOLD = 500;   // مبلغ يستوجب تأكيداً مزدوجاً
-  const AUDIT_COLLECTION       = 'wallet_audit_log';
-  const SESSION_AUTH_TTL       = 10 * 60 * 1000; // 10 دقائق قبل إعادة المصادقة
+  const DEFAULT_WALLET_THRESHOLD   = 500;    // افتراضي لعمليات المحفظة الإدارية
+  const DEFAULT_PURCHASE_THRESHOLD = 1000;   // افتراضي لعمليات الشراء والإيداعات
+  const AUDIT_COLLECTION           = 'wallet_audit_log';
+  const SESSION_AUTH_TTL           = 10 * 60 * 1000; // 10 دقائق قبل إعادة المصادقة
+
+  /* ── حدود التنبيه الديناميكية (تُقرأ من Firestore) ── */
+  let LARGE_AMOUNT_THRESHOLD   = DEFAULT_WALLET_THRESHOLD;
+  let PURCHASE_ALERT_THRESHOLD = DEFAULT_PURCHASE_THRESHOLD;
 
   let _lastAuthTime = 0;
   let _authSessionUid = null;
@@ -1457,12 +1462,14 @@
      نظام إشعارات العمليات المالية الكبيرة — Real-time Alerts
   ══════════════════════════════════════════════════════════ */
 
-  const ALERT_SEEN_KEY   = 'wsec_seen_alerts';
-  let _alertsStore       = [];      /* بطاقات الإشعارات المحفوظة */
-  let _alertWatcherUnsub = null;    /* إلغاء مستمع Firestore */
-  let _panelOpen         = false;
-  let _toastQueue        = [];
-  let _toastActive       = false;
+  const ALERT_SEEN_KEY      = 'wsec_seen_alerts';
+  let _alertsStore          = [];      /* بطاقات إشعارات المحفظة الإدارية */
+  let _purchaseAlertsStore  = [];      /* بطاقات إشعارات الشراء/الإيداعات */
+  let _alertWatcherUnsub    = null;    /* إلغاء مستمع عمليات المحفظة */
+  let _purchaseWatcherUnsub = null;    /* إلغاء مستمع الإيداعات */
+  let _panelOpen            = false;
+  let _toastQueue           = [];
+  let _toastActive          = false;
 
   /* ── المعرّفات المشاهَدة (localStorage) ── */
   function _getSeenIds() {
@@ -1484,9 +1491,18 @@
 
   /* ── إرسال بيانات المحافظ إلى الجرس الموحد ── */
   function _updateBadge() {
+    /* تحديث شارة الجرس الخاص بنظام الأمان */
+    const badge = document.getElementById('wsec-bell-badge');
+    const totalUnread = _unreadCount() + _purchaseUnreadCount();
+    if (badge) {
+      badge.style.display = totalUnread > 0 ? 'flex' : 'none';
+      badge.textContent   = totalUnread > 99 ? '99+' : String(totalUnread);
+    }
+
+    /* تحديث الجرس الموحد إن وُجد */
     if (typeof window.__unifiedNotif === 'undefined') return;
     const seen = _getSeenIds();
-    const items = _alertsStore.map(a => {
+    const walletItems = _alertsStore.map(a => {
       const m = _alertMeta(a.action);
       return {
         icon:   m.icon,
@@ -1497,16 +1513,36 @@
         unread: !seen.has(a.id),
       };
     });
-    const unreadCount = items.filter(i => i.unread).length;
-    window.__unifiedNotif.update('wallet', items, unreadCount);
+    const purchaseItems = _purchaseAlertsStore.map(a => ({
+      icon:   '🏦',
+      title:  `إيداع/شراء كبير — ${(a.amount || 0).toLocaleString('ar-YE')} ر.ي`,
+      sub:    a.customerName || '—',
+      time:   _fmtTs(a.createdAt || a.timestamp),
+      nav:    'wallet',
+      unread: !seen.has(a.id),
+    }));
+    const allItems    = [...purchaseItems, ...walletItems];
+    const unreadCount = allItems.filter(i => i.unread).length;
+    window.__unifiedNotif.update('wallet', allItems, unreadCount);
   }
 
-  /* ── الأيقونة والألوان حسب نوع العملية ── */
-  function _alertMeta(action, amount) {
+  /* ── عدد الإيداعات غير المقروءة ── */
+  function _purchaseUnreadCount() {
+    const seen = _getSeenIds();
+    return _purchaseAlertsStore.filter(a => !seen.has(a.id)).length;
+  }
+
+  /* ── الأيقونة والألوان حسب نوع العملية (محفظة إدارية) ── */
+  function _alertMeta(action) {
     if (action === 'credit') return { icon:'💰', color:'#10b981', cls:'credit', label:'إضافة رصيد كبيرة' };
     if (action === 'debit')  return { icon:'🔴', color:'#ef4444', cls:'debit',  label:'خصم رصيد كبير'  };
     if (action === 'set')    return { icon:'✏️', color:'#a78bfa', cls:'set',    label:'تعيين رصيد'     };
     return { icon:'⚠️', color:'#fbbf24', cls:'set', label:'عملية مالية' };
+  }
+
+  /* ── الأيقونة والألوان لإشعارات الشراء/الإيداع ── */
+  function _purchaseMeta(deposit) {
+    return { icon:'🏦', color:'#3b82f6', cls:'credit', label:'إيداع / شراء كبير' };
   }
 
   /* ── توست الإشعار المنزلق ── */
@@ -1563,19 +1599,34 @@
     if (!panel) return;
 
     const seen = _getSeenIds();
-    const list = _alertsStore.length === 0
+
+    /* دمج إشعارات المحفظة والإيداعات مع تمييز النوع */
+    const allAlerts = [
+      ..._alertsStore.map(a => ({ ...a, _type: 'wallet' })),
+      ..._purchaseAlertsStore.map(a => ({ ...a, _type: 'purchase' })),
+    ].sort((a, b) => {
+      const ta = a.timestamp?.seconds || a.timestamp?.getTime?.() / 1000 || 0;
+      const tb = b.timestamp?.seconds || b.timestamp?.getTime?.() / 1000 || 0;
+      return tb - ta;
+    });
+
+    const list = allAlerts.length === 0
       ? `<div class="wsec-ap-empty">🔕 لا توجد عمليات مالية كبيرة حتى الآن</div>`
-      : _alertsStore.map(a => {
-          const m   = _alertMeta(a.action);
+      : allAlerts.map(a => {
+          const isPurchase = a._type === 'purchase';
+          const m   = isPurchase ? _purchaseMeta(a) : _alertMeta(a.action);
           const cls = seen.has(a.id) ? '' : ' unread';
+          const nameRow = isPurchase
+            ? `${_esc(a.customerName || '—')}`
+            : `${_esc(a.targetName||'—')} · ${_esc(a.adminName||'—')}`;
           return `
-          <div class="wsec-alert-card${cls}" onclick="wsecAlertCardClick('${a.id}')">
+          <div class="wsec-alert-card${cls}" onclick="${isPurchase ? `wsecPurchaseAlertClick('${a.id}')` : `wsecAlertCardClick('${a.id}')`}">
             <div class="wsec-alert-icon">${m.icon}</div>
             <div class="wsec-alert-body">
               <div class="wsec-alert-title">${m.label}</div>
               <div class="wsec-alert-amount ${m.cls}">${(a.amount||0).toLocaleString('ar-YE')} ر.ي</div>
-              <div class="wsec-alert-meta">${_esc(a.targetName||'—')} · ${_esc(a.adminName||'—')}</div>
-              <div class="wsec-alert-meta">${_fmtTs(a.timestamp)}</div>
+              <div class="wsec-alert-meta">${nameRow}</div>
+              <div class="wsec-alert-meta">${_fmtTs(a.timestamp || a.createdAt)}</div>
               ${a.note ? `<div class="wsec-alert-meta" style="color:var(--text)">${_esc(a.note)}</div>` : ''}
             </div>
             ${!seen.has(a.id) ? '<div class="wsec-alert-dot"></div>' : ''}
@@ -1584,7 +1635,11 @@
 
     panel.innerHTML = `
       <div class="wsec-ap-header">
-        <div class="wsec-ap-title">🔔 تنبيهات المحافظ <span style="font-size:11px;color:var(--text-muted);font-weight:400">(≥${LARGE_AMOUNT_THRESHOLD} ر.ي)</span></div>
+        <div class="wsec-ap-title">🔔 تنبيهات المالية
+          <span style="font-size:10px;color:var(--text-muted);font-weight:400;display:block;margin-top:2px">
+            💰 محفظة ≥${LARGE_AMOUNT_THRESHOLD.toLocaleString('ar-YE')} · 🏦 إيداعات ≥${PURCHASE_ALERT_THRESHOLD.toLocaleString('ar-YE')} ر.ي
+          </span>
+        </div>
         <div class="wsec-ap-actions">
           <button class="wsec-ap-btn" onclick="wsecMarkAllAlerts()">✓ تعليم الكل مقروء</button>
           <button class="wsec-ap-btn" onclick="wsecToggleAlertsPanel()">✕</button>
@@ -1627,8 +1682,20 @@
   /* ── تعليم الكل مقروء ── */
   window.wsecMarkAllAlerts = function () {
     _alertsStore.forEach(a => _markSeen(a.id));
+    _purchaseAlertsStore.forEach(a => _markSeen(a.id));
     _updateBadge();
     _renderAlertsPanel();
+  };
+
+  /* ── النقر على بطاقة إشعار إيداع/شراء ── */
+  window.wsecPurchaseAlertClick = function (id) {
+    _markSeen(id);
+    _updateBadge();
+    _renderAlertsPanel();
+    if (typeof setAdminTab === 'function') {
+      wsecToggleAlertsPanel();
+      setTimeout(() => setAdminTab('wallet'), 200);
+    }
   };
 
   /* ── إنشاء/تحديث جرس الجرس ── */
@@ -1643,9 +1710,13 @@
     _updateBadge();
   }
 
-  /* ── بدء المراقبة الفورية على Firestore ── */
+  /* ── بدء مراقبة عمليات المحفظة الإدارية الكبيرة ── */
   function _startLargeAmountWatcher() {
-    if (_alertWatcherUnsub) return; /* لا تبدأ مرتين */
+    if (_alertWatcherUnsub) {
+      _alertWatcherUnsub();
+      _alertWatcherUnsub = null;
+      _alertsStore = [];
+    }
 
     const startTime = firebase.firestore.Timestamp.now();
 
@@ -1654,31 +1725,24 @@
       .orderBy('amount', 'desc')
       .limit(50)
       .onSnapshot(snap => {
-        let hasNew = false;
-
         snap.docChanges().forEach(change => {
           if (change.type !== 'added') return;
           const data  = change.doc.data();
           const docId = change.doc.id;
 
-          /* فقط العمليات المالية (ليس gate_access وما شابه) */
           if (!['credit','debit','set'].includes(data.action)) return;
 
-          /* لا نُنبّه بسجلات قديمة (موجودة قبل فتح الصفحة) */
           const ts = data.timestamp;
           const docTime = ts?.seconds ? ts.seconds : (ts instanceof Date ? ts.getTime()/1000 : 0);
           const isNew = docTime >= startTime.seconds;
 
-          /* أضف للمخزن إن لم يكن موجوداً */
           const exists = _alertsStore.some(a => a.id === docId);
           if (!exists) {
             _alertsStore.unshift({ id: docId, ...data });
             if (_alertsStore.length > 50) _alertsStore.pop();
           }
 
-          /* أظهر توست للمستجدات فقط */
           if (isNew && _isUnseen(docId)) {
-            hasNew = true;
             _showToastAlert({ id: docId, ...data });
           }
         });
@@ -1689,14 +1753,94 @@
         console.warn('[WalletSecurity] فشل مراقبة الإشعارات:', err.message);
       });
 
-    console.log('[WalletSecurity] مراقب العمليات الكبيرة نشط 🔔');
+    console.log(`[WalletSecurity] مراقب عمليات المحفظة نشط (≥${LARGE_AMOUNT_THRESHOLD} ر.ي) 🔔`);
   }
 
+  /* ── بدء مراقبة الإيداعات والمشتريات الكبيرة ── */
+  function _startPurchaseWatcher() {
+    if (_purchaseWatcherUnsub) {
+      _purchaseWatcherUnsub();
+      _purchaseWatcherUnsub = null;
+      _purchaseAlertsStore = [];
+    }
+
+    const startTime = firebase.firestore.Timestamp.now();
+
+    _purchaseWatcherUnsub = db.collection('bank_deposits')
+      .where('amount', '>=', PURCHASE_ALERT_THRESHOLD)
+      .orderBy('amount', 'desc')
+      .limit(50)
+      .onSnapshot(snap => {
+        snap.docChanges().forEach(change => {
+          if (change.type !== 'added') return;
+          const data  = change.doc.data();
+          const docId = change.doc.id;
+
+          /* تحقق من الوقت: فقط الإيداعات الجديدة */
+          const ts = data.createdAt;
+          let docTime = 0;
+          if (ts?.seconds)          docTime = ts.seconds;
+          else if (ts instanceof Date) docTime = ts.getTime() / 1000;
+          else if (typeof ts === 'number') docTime = ts;
+          const isNew = docTime >= startTime.seconds;
+
+          const exists = _purchaseAlertsStore.some(a => a.id === docId);
+          if (!exists) {
+            _purchaseAlertsStore.unshift({ id: docId, ...data });
+            if (_purchaseAlertsStore.length > 50) _purchaseAlertsStore.pop();
+          }
+
+          if (isNew && _isUnseen(docId)) {
+            /* توست خاص بالإيداعات */
+            _showToastAlert({
+              id:         docId,
+              action:     'purchase',
+              amount:     data.amount,
+              targetName: data.customerName || '—',
+              adminName:  '',
+              note:       data.bankName ? `إيداع بنكي — ${data.bankName}` : 'إيداع/شراء',
+              timestamp:  data.createdAt,
+            });
+          }
+        });
+
+        _updateBadge();
+
+      }, err => {
+        console.warn('[WalletSecurity] فشل مراقبة الإيداعات:', err.message);
+      });
+
+    console.log(`[WalletSecurity] مراقب الإيداعات نشط (≥${PURCHASE_ALERT_THRESHOLD} ر.ي) 🏦`);
+  }
+
+  /* ── إعادة تحميل الحدود وإعادة تشغيل المراقبين ── */
+  window.wsecReloadThresholds = function (walletThreshold, purchaseThreshold) {
+    LARGE_AMOUNT_THRESHOLD   = walletThreshold   || DEFAULT_WALLET_THRESHOLD;
+    PURCHASE_ALERT_THRESHOLD = purchaseThreshold || DEFAULT_PURCHASE_THRESHOLD;
+    _startLargeAmountWatcher();
+    _startPurchaseWatcher();
+    console.log(`[WalletSecurity] تم تحديث الحدود: محفظة=${LARGE_AMOUNT_THRESHOLD}، إيداعات=${PURCHASE_ALERT_THRESHOLD}`);
+  };
+
   /* ── تهيئة النظام عند جاهزية المستخدم الإداري ── */
-  function _initAlertSystem() {
+  async function _initAlertSystem() {
     const me = State.currentUser;
     if (!me || !['admin','staff'].includes(me.role)) return;
+
+    /* تحميل الحدود من Firestore قبل بدء المراقبة */
+    try {
+      const doc = await db.collection('platform_settings').doc('main').get();
+      if (doc.exists) {
+        const d = doc.data();
+        if (d.walletAlertThreshold   > 0) LARGE_AMOUNT_THRESHOLD   = d.walletAlertThreshold;
+        if (d.purchaseAlertThreshold > 0) PURCHASE_ALERT_THRESHOLD = d.purchaseAlertThreshold;
+      }
+    } catch (e) {
+      console.warn('[WalletSecurity] تعذّر تحميل حدود التنبيه، سيُستخدم الافتراضي:', e.message);
+    }
+
     _startLargeAmountWatcher();
+    _startPurchaseWatcher();
   }
 
   /* ── انتظر حتى يصبح State.currentUser جاهزاً ── */
@@ -1707,14 +1851,15 @@
     if (me && me.role && me.role !== 'guest') {
       clearInterval(_initInterval);
       _initAlertSystem();
-    } else if (_initTries > 60) { /* 30 ثانية كحد أقصى */
+    } else if (_initTries > 60) {
       clearInterval(_initInterval);
     }
   }, 500);
 
-  /* تنظيف المراقب عند إغلاق الصفحة */
+  /* تنظيف المراقبين عند إغلاق الصفحة */
   window.addEventListener('beforeunload', () => {
-    if (_alertWatcherUnsub) _alertWatcherUnsub();
+    if (_alertWatcherUnsub)    _alertWatcherUnsub();
+    if (_purchaseWatcherUnsub) _purchaseWatcherUnsub();
   });
 
   console.log('[WalletSecurity] نظام أمان المحافظ المتكامل جاهز 🔐');
