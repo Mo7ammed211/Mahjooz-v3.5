@@ -342,7 +342,10 @@ function renderServiceCard(s) {
         ${activeOffer && typeof ph_offerPriceHtml === 'function'
           ? ph_offerPriceHtml(activeOffer, defaultPriceHtml)
           : defaultPriceHtml}
-        <div style="font-size:13px;color:var(--text-muted)">${avg?'⭐ '+avg+' ('+rating.length+' تقييم)':'لا يوجد تقييم بعد'}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--text-muted)">${avg?'⭐ '+avg+' ('+rating.length+' تقييم)':'لا يوجد تقييم بعد'}</span>
+          ${rating.length ? `<button id="ph36-reviews-btn" onclick="ph36_showReviewsModal('${s.id}','${(s.name||'').replace(/'/g,'\\\'')}')" style="font-size:11px;color:var(--primary);cursor:pointer;padding:2px 8px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:10px;font-family:inherit;text-decoration:none">اقرأ التقييمات</button>` : ''}
+        </div>
       </div>
       <div class="svc-card-actions">
         ${u?.role==='customer' ? `<button class="btn btn-primary btn-sm" data-svc-cart-id="${s.id}" onclick="typeof svc_addToCart==='function'?svc_addToCart('${s.id}'):bookService('${s.id}')">${activeOffer ? '🏷️ اطلب بالسعر المخفض' : '🛒 أضف للسلة'}</button>` :
@@ -632,6 +635,9 @@ function renderMyOrders() {
     completed:'badge-teal',
     cancelled:'badge-rose'
   };
+  // تذكير تلقائي بالتقييم لأي طلب مكتمل غير مُقيَّم
+  if (typeof ph36_autoPromptRating === 'function') setTimeout(ph36_autoPromptRating, 1800);
+
   return `<div id="app-content">
     <div class="page-header"><h1>📋 طلباتي</h1></div>
     <div class="listing-container">
@@ -661,7 +667,7 @@ function renderMyOrders() {
             <button class="btn btn-success btn-sm" onclick="ph_payProfessionOrder('${o.id}')">💳 دفع الآن</button>
           `:''}
           ${o.status==='completed' && !AppData.ratings.find(r=>r.orderId===o.id&&r.customerId===u.uid) ?
-            `<button class="btn btn-primary btn-sm" onclick="ph29_showRatingModal('${o.id}')">⭐ قيّم الخدمة</button>` : ''}
+            `<button class="btn btn-primary btn-sm" onclick="(typeof ph36_showOrderRatingModal==='function'?ph36_showOrderRatingModal:ph29_showRatingModal)('${o.id}')">⭐ قيّم الطلب</button>` : ''}
           ${o.status==='with_driver' && o.driverPhone ?
             `<a href="https://wa.me/${o.driverPhone}" target="_blank" class="btn btn-sm" style="background:#25d366;color:#fff">💬 تواصل مع المندوب</a>` : ''}
           ${(o.status==='with_driver' || o.status==='delivered' || o.status==='completed') ?

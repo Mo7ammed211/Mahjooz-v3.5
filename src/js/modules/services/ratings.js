@@ -116,7 +116,7 @@ window.ph29_showRatingModal = function(orderId, options = {}) {
         <div class="ph29-tags">
           <button class="ph29-tag" onclick="ph29_toggleTag(this)">✅ دقيقون</button>
           <button class="ph29-tag" onclick="ph29_toggleTag(this)">👍 محترفون</button>
-          <button class="ph29-tag" onclick="ph29_toggleTag(this)">⏰ puntuales</button>
+          <button class="ph29-tag" onclick="ph29_toggleTag(this)">⏰ في الوقت المحدد</button>
           <button class="ph29-tag" onclick="ph29_toggleTag(this)">💎 جودة عالية</button>
           <button class="ph29-tag" onclick="ph29_toggleTag(this)">😄 تعامل رائع</button>
           <button class="ph29-tag" onclick="ph29_toggleTag(this)">🔁 سأكرر التعامل</button>
