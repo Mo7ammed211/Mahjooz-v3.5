@@ -779,7 +779,7 @@
   };
 
   window.ph17_driverAccept = async function (orderId) {
-    await fsUpdate('orders', orderId, { status: 'accepted', driverAcceptedAt: new Date() });
+    await fsUpdate('orders', orderId, { status: 'accepted', driverAcceptedAt: new Date(), driverAssignedAt: null });
     await fsAdd('order_routing', { orderId, kind:'driver_accept', uid: State.currentUser.uid, at: new Date() });
     toast('تم قبول التوصيل ✅','success');
     if (typeof loadAllData==='function') await loadAllData();
@@ -799,6 +799,7 @@
       driverIdx: nextIdx,
       assignedDriverId: next,
       driverId: next,
+      driverAssignedAt: next ? new Date() : null,
       status: next ? 'provider_accepted' : 'no_drivers'
     };
     await fsUpdate('orders', orderId, patch);

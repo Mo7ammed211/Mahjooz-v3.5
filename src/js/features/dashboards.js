@@ -156,7 +156,8 @@ window.renderAdmin = function () {
         { k: 'cms_texts',        icon: '✏️', label: 'النصوص والأيقونات', desc: 'تخصيص نصوص المنصة' },
         { k: 'cms_pages',        icon: '📄', label: 'الصفحات الثابتة',  desc: 'شروط الخدمة وسياسة الخصوصية' },
         { k: 'ph17settings',     icon: '⚙️', label: 'الإعدادات العامة', desc: 'إعدادات النظام الشاملة' },
-        { k: 'direct_routing',   icon: '🚦', label: 'التوجيه المباشر',  desc: 'ضبط توزيع الطلبات تلقائياً' },
+        { k: 'direct_routing',      icon: '🚦', label: 'التوجيه المباشر',           desc: 'ضبط توزيع الطلبات تلقائياً' },
+        { k: 'routing_timeouts',    icon: '⏱', label: 'حد أقصى وقت القبول',        desc: 'Timeout تلقائي للمزوّدين والمندوبين' },
         { k: 'free_shipping',    icon: '🚚', label: 'التوصيل المجاني',   desc: 'شروط الحصول على توصيل مجاني لكل قسم' },
         { k: 'sys_visibility',   icon: '🛡️', label: 'التحكم الشامل في المنصة', desc: 'إيقاف أو إخفاء أي قسم أو نظام أو ميزة في المنصة',
           badge: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v3')||localStorage.getItem('sv_config_v2')||'{}'); const keys=['bookings','services','stores','digital','offers','wallet','coupons','loyalty','reviews','wishlist','self_pickup','live_tracking','notifications','delivery','cancellation','arboon','free_shipping','scheduling','share','deposits','refunds','ads','hero','featured','search','hotels','car_rental','flights','medical','halls','order_notes','driver_messaging','smart_alerts','analytics_dash','reports','bulk_import','ads_management','map_tracking','vendor_analytics','wallet_admin','section_control','region_picker']; const hidden=keys.filter(k=>d[k]===false).length; const maint=['bookings','services','stores','digital','offers','hotels','car_rental','flights','medical','halls'].filter(k=>!!d[k+'_maint']).length; return (hidden+maint)||null; } catch(e){ return null; } })(),
@@ -264,6 +265,7 @@ window.renderAdmin = function () {
           ${activeTab === 'drivers_database'    ? (typeof renderAdminDriversDatabase === 'function' ? renderAdminDriversDatabase() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل قاعدة بيانات المندوبين...</div>') : ''}
           ${activeTab === 'sys_visibility'      ? (typeof renderAdminSectionVisibility === 'function' ? renderAdminSectionVisibility() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التحكم...</div>') : ''}
           ${activeTab === 'free_shipping'       ? (typeof renderAdminFreeShipping === 'function' ? renderAdminFreeShipping() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التوصيل المجاني...</div>') : ''}
+          ${activeTab === 'routing_timeouts'    ? (typeof renderAdminRoutingTimeouts === 'function' ? renderAdminRoutingTimeouts() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل إعدادات الـ Timeout...</div>') : ''}
         </main>
       </div>
     </div>

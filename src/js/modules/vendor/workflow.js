@@ -230,7 +230,8 @@ window.ph21_providerAccept = async function(orderId) {
         responseAction: 'accepted',
         responseTimeSecs,
         driverPool: dPool, driverIdx: 0, driverHistory: [],
-        assignedDriverId: dPool[0] || null, driverId: dPool[0] || null
+        assignedDriverId: dPool[0] || null, driverId: dPool[0] || null,
+        driverAssignedAt: dPool[0] ? new Date() : null,
       });
       await fsAdd('order_routing', { orderId, kind: 'provider_accept', uid: State.currentUser.uid, at: respondedAt, responseTimeSecs });
       toast(dPool.length ? 'تم القبول — تم إسناد الطلب لأقرب مندوب' : 'تم القبول — لا يوجد مندوبون', 'success');
