@@ -163,6 +163,10 @@ window.renderAdmin = function () {
           urgent: (() => { try { return (window.AppData?.orders||[]).some(o=>o.status==='no_providers'||o.status==='no_drivers'); } catch(e){ return false; } })()
         },
         { k: 'free_shipping',    icon: '🚚', label: 'التوصيل المجاني',   desc: 'شروط الحصول على توصيل مجاني لكل قسم' },
+        { k: 'error_dashboard',  icon: '🚨', label: 'لوحة الأخطاء التقنية',   desc: 'مراقبة فورية لجميع الأخطاء والتحذيرات في المنصة',
+          badge: (() => { try { const logs = JSON.parse(localStorage.getItem('mahjooz_error_log') || '[]'); const c = logs.filter(l => l.type === 'error' || l.type === 'rejection').length; return c || null; } catch(e){ return null; } })(),
+          urgent: (() => { try { const logs = JSON.parse(localStorage.getItem('mahjooz_error_log') || '[]'); return logs.some(l => l.type === 'error' || l.type === 'rejection'); } catch(e){ return false; } })()
+        },
         { k: 'sys_visibility',   icon: '🛡️', label: 'التحكم الشامل في المنصة', desc: 'إيقاف أو إخفاء أي قسم أو نظام أو ميزة في المنصة',
           badge: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v3')||localStorage.getItem('sv_config_v2')||'{}'); const keys=['bookings','services','stores','digital','offers','wallet','coupons','loyalty','reviews','wishlist','self_pickup','live_tracking','notifications','delivery','cancellation','arboon','free_shipping','scheduling','share','deposits','refunds','ads','hero','featured','search','hotels','car_rental','flights','medical','halls','order_notes','driver_messaging','smart_alerts','analytics_dash','reports','bulk_import','ads_management','map_tracking','vendor_analytics','wallet_admin','section_control','region_picker']; const hidden=keys.filter(k=>d[k]===false).length; const maint=['bookings','services','stores','digital','offers','hotels','car_rental','flights','medical','halls'].filter(k=>!!d[k+'_maint']).length; return (hidden+maint)||null; } catch(e){ return null; } })(),
           urgent: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v3')||localStorage.getItem('sv_config_v2')||'{}'); return !!d.full_maint; } catch(e){ return false; } })()
@@ -271,6 +275,7 @@ window.renderAdmin = function () {
           ${activeTab === 'free_shipping'       ? (typeof renderAdminFreeShipping === 'function' ? renderAdminFreeShipping() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التوصيل المجاني...</div>') : ''}
           ${activeTab === 'routing_timeouts'    ? (typeof renderAdminRoutingTimeouts === 'function' ? renderAdminRoutingTimeouts() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل إعدادات الـ Timeout...</div>') : ''}
           ${activeTab === 'stalled_orders'     ? (typeof renderAdminStalledOrders === 'function' ? renderAdminStalledOrders() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل الطلبات المتوقفة...</div>') : ''}
+          ${activeTab === 'error_dashboard'   ? (typeof renderAdminErrorDashboard === 'function' ? renderAdminErrorDashboard() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل لوحة الأخطاء...</div>') : ''}
         </main>
       </div>
     </div>

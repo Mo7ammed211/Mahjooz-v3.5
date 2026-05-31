@@ -2,6 +2,7 @@
 @import "./components/login-redesign.css";
 @import "./components/pwa-install.css";
 @import "./components/booking-date-picker.css";
+@import "./components/error-dashboard.css";
 
 /* --- base.css --- */
 :root {
