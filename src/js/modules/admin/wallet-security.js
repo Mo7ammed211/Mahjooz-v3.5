@@ -1482,17 +1482,23 @@
     return _alertsStore.filter(a => !seen.has(a.id)).length;
   }
 
-  /* ── تحديث شارة الجرس ── */
+  /* ── إرسال بيانات المحافظ إلى الجرس الموحد ── */
   function _updateBadge() {
-    const badge = document.getElementById('wsec-bell-badge');
-    if (!badge) return;
-    const n = _unreadCount();
-    if (n > 0) {
-      badge.style.display = 'flex';
-      badge.textContent   = n > 99 ? '99+' : String(n);
-    } else {
-      badge.style.display = 'none';
-    }
+    if (typeof window.__unifiedNotif === 'undefined') return;
+    const seen = _getSeenIds();
+    const items = _alertsStore.map(a => {
+      const m = _alertMeta(a.action);
+      return {
+        icon:   m.icon,
+        title:  `${m.label} — ${(a.amount || 0).toLocaleString('ar-YE')} ر.ي`,
+        sub:    [a.targetName, a.adminName].filter(Boolean).join(' · '),
+        time:   _fmtTs(a.timestamp),
+        nav:    'wallet_audit',
+        unread: !seen.has(a.id),
+      };
+    });
+    const unreadCount = items.filter(i => i.unread).length;
+    window.__unifiedNotif.update('wallet', items, unreadCount);
   }
 
   /* ── الأيقونة والألوان حسب نوع العملية ── */
@@ -1677,8 +1683,7 @@
           }
         });
 
-        if (hasNew) _updateBadge();
-        if (_panelOpen) _renderAlertsPanel();
+        _updateBadge();
 
       }, err => {
         console.warn('[WalletSecurity] فشل مراقبة الإشعارات:', err.message);

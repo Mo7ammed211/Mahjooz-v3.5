@@ -11,18 +11,20 @@
     live:   { label: '🛎️ تنبيهات حيّة',  color: '#7c3aed', items: [], count: 0 },
     notif:  { label: '📨 إشعاراتي',       color: '#0ea5e9', items: [], count: 0 },
     driver: { label: '🚚 طلبات التوصيل', color: '#0d9488', items: [], count: 0 },
+    wallet: { label: '💰 تنبيهات مالية', color: '#f59e0b', items: [], count: 0 },
   };
 
   const SOURCE_META = {
     live:   { label: 'حيّة',    icon: '🛎️' },
     notif:  { label: 'إشعاراتي', icon: '📨' },
     driver: { label: 'توصيل',   icon: '🚚' },
+    wallet: { label: 'مالية',   icon: '💰' },
   };
 
   /* ── Role → relevant sources ───────────────────────────────── */
   const ROLE_SOURCES = {
-    admin:    ['live', 'notif', 'driver'],
-    staff:    ['live', 'notif'],
+    admin:    ['live', 'notif', 'driver', 'wallet'],
+    staff:    ['live', 'notif', 'wallet'],
     vendor:   ['live', 'notif'],
     provider: ['live', 'notif'],
     driver:   ['driver', 'notif'],
@@ -116,6 +118,20 @@
     </div>`;
   }
 
+  function _renderItemWallet(item) {
+    const nav = _esc(item.nav || '');
+    return `<div class="ub-item ${item.unread ? 'ub-unread' : ''}"
+        ${nav ? `onclick="navigate('${nav}');toggleUnifiedNotif()"` : ''}>
+      <span class="ub-item-icon">${item.icon || '💰'}</span>
+      <div class="ub-item-body">
+        <div class="ub-item-title">${_esc(item.title)}</div>
+        ${item.sub ? `<div class="ub-item-sub">${_esc(item.sub)}</div>` : ''}
+        <div class="ub-item-time">${_esc(item.time || '')}</div>
+      </div>
+      ${item.unread ? '<div class="ub-unread-dot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;margin-top:4px;"></div>' : ''}
+    </div>`;
+  }
+
   /* ── Filter Tabs ─────────────────────────────────────────────── */
   function _renderFilterTabs(roleSources) {
     if (roleSources.length <= 1) return '';
@@ -174,6 +190,7 @@
           ${src.items.slice(0, 10).map(item =>
             id === 'live'   ? _renderItemLive(item)   :
             id === 'notif'  ? _renderItemNotif(item)  :
+            id === 'wallet' ? _renderItemWallet(item) :
                               _renderItemDriver(item)
           ).join('')}
           ${src.items.length > 10
@@ -182,9 +199,15 @@
       }).join('')}</div>`;
     }
 
+    const hasUnreadWallet = roleSources.includes('wallet')
+      && (_activeFilter === 'all' || _activeFilter === 'wallet')
+      && (SOURCES.wallet.items || []).some(i => i.unread);
+
     const markAllBtn = hasUnreadNotif
       ? `<button class="ub-mark-all" onclick="markAllNotifsRead?.()">تحديد الكل كمقروء</button>`
-      : '';
+      : hasUnreadWallet
+        ? `<button class="ub-mark-all" onclick="wsecMarkAllAlerts?.()">تحديد الكل كمقروء</button>`
+        : '';
 
     panel.innerHTML = `
       <div class="ub-header">
