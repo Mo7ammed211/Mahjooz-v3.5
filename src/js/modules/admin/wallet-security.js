@@ -1691,7 +1691,6 @@
   function _initAlertSystem() {
     const me = State.currentUser;
     if (!me || !['admin','staff'].includes(me.role)) return;
-    _ensureBell();
     _startLargeAmountWatcher();
   }
 
