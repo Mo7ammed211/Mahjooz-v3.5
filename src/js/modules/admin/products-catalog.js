@@ -146,7 +146,7 @@ function ph46_renderMainPage() {
     const secPending = allItems.filter(i => i.sectionId === sec.id && i.status === 'pending_approval').length;
 
     return `
-    <div class="ph46-card ph46-sec-card" onclick="ph46_goSection('${sec.id}')" style="--sec-color:${sec.color}">
+    <div class="ph46-card ph46-sec-card" onclick="ph46_goSection('${sec.id}')" style="--sec-color:${sec.color}" title="اضغط للدخول إلى تصنيفات ${sec.label}">
       <div class="ph46-sec-card-body">
         <div class="ph46-sec-icon-wrap" style="background:${sec.color}15; border:1px solid ${sec.color}35">
           <span style="color:${sec.color}">${sec.icon}</span>
@@ -154,8 +154,11 @@ function ph46_renderMainPage() {
         <div class="ph46-sec-info">
           <div class="ph46-sec-title">${sec.label}</div>
           <div class="ph46-sec-desc">${sec.desc}</div>
+          <div class="ph46-sec-open-hint" style="margin-top:8px; font-size:12px; color:${sec.color}; font-weight:600; display:flex; align-items:center; gap:4px;">
+            <span>📂 فتح التصنيفات والمنتجات</span>
+            <span style="font-size:14px;">←</span>
+          </div>
         </div>
-        <div class="ph46-sec-arrow"></div>
       </div>
       <div class="ph46-sec-stats-bar">
         <div class="ph46-sec-stat-item">
@@ -405,7 +408,12 @@ function ph46_renderMainPage() {
     </div>` : ''}
 
     <div class="ph46-sections-list">
-      <h3 class="ph46-section-heading">الأقسام والكتالوجات الأربعة</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 class="ph46-section-heading" style="margin-bottom:4px;">الأقسام والكتالوجات الأربعة</h3>
+          <p style="color:var(--text-muted); font-size:12.5px; margin:0;">اضغط على أي قسم للدخول إلى تصنيفاته وإدارة منتجاته وخدماته</p>
+        </div>
+      </div>
       <div class="ph46-sections-grid">${sectionCards}</div>
     </div>
 
@@ -1355,20 +1363,22 @@ function ph46_renderCatsList() {
 
 window.ph46_showAddCatModal = function(sectionId, parentId = null) {
   const sections = PH46_SECTIONS;
-  const targetSection = sectionId || State._ph46?.section || 'bookings';
+  const targetSection = sectionId || State._ph46?.section || null;
   const allCats = AppData.catalogCats || [];
   const parentCat = parentId ? allCats.find(c => c.id === parentId) : null;
   const parentCatType = parentCat ? (parentCat.catType || 'booking') : null;
+  const showSectionSelector = !targetSection && !parentId;
 
   openModal(`
     <div class="modal-header">
       <h2 class="modal-title">${parentId ? `📂 إضافة فئة فرعية تحت (${parentCat?.name})` : '📂 إضافة فئة رئيسية جديدة'}</h2>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
-    <div class="form-group" style="display: none;">
-      <label class="form-label">القسم الرئيسي</label>
+    <div class="form-group" ${showSectionSelector ? '' : 'style="display:none;"'}>
+      <label class="form-label">القسم الرئيسي ${showSectionSelector ? '*' : ''}</label>
       <select class="form-control" id="ph46-cat-section" ${parentId ? 'disabled' : ''}>
-        ${sections.map(s => `<option value="${s.id}" ${s.id===targetSection?'selected':''}>${s.icon} ${s.label}</option>`).join('')}
+        ${showSectionSelector ? `<option value="">— اختر القسم —</option>` : ''}
+        ${sections.map(s => `<option value="${s.id}" ${s.id===(targetSection||'bookings')?'selected':''}>${s.icon} ${s.label}</option>`).join('')}
       </select>
     </div>
     
@@ -1407,6 +1417,7 @@ window.ph46_saveCat = async function(parentId = '') {
   const order = parseInt(document.getElementById('ph46-cat-order')?.value) || 0;
   const catType = document.getElementById('ph46-cat-type')?.value || 'booking';
   
+  if (!sectionId) { toast('يرجى اختيار القسم الرئيسي أولاً', 'error'); return; }
   if (!name) { toast('يرجى كتابة اسم الفئة', 'error'); return; }
 
   showLoader();
