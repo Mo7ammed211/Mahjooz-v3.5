@@ -439,15 +439,19 @@ async function bookService(svcId) {
       <input class="form-control" id="bk-time" type="time">
     </div>
 
-    ${savedAddresses.length && typeof ph41_renderAddressSelector === 'function'
-      ? ph41_renderAddressSelector(savedAddresses) : ''}
+    ${s.requiresDelivery !== false && typeof ph37_getDeliveryTypeSelectorHTML === 'function'
+      ? ph37_getDeliveryTypeSelectorHTML(s.location || s.address || s.area || '') : ''}
 
-    <div class="form-group" style="${s.requiresDelivery === false ? 'display:none;' : ''}">
-      <label class="form-label">📍 عنوان التوصيل${savedAddresses.length ? ' (أو أدخل عنواناً جديداً)' : ''}</label>
-      <input class="form-control" id="bk-addr"
-             placeholder="المدينة، الحي، الشارع..."
-             value="${defaultAddr ? escAttr(defaultAddr.address) : ''}"
-             style="${defaultAddr ? 'display:none' : ''}">
+    <div id="dt-addr-wrapper" style="${s.requiresDelivery === false ? 'display:none' : ''}">
+      ${savedAddresses.length && typeof ph41_renderAddressSelector === 'function'
+        ? ph41_renderAddressSelector(savedAddresses) : ''}
+      <div class="form-group">
+        <label class="form-label">📍 عنوان التوصيل${savedAddresses.length ? ' (أو أدخل عنواناً جديداً)' : ''}</label>
+        <input class="form-control" id="bk-addr"
+               placeholder="المدينة، الحي، الشارع..."
+               value="${defaultAddr ? escAttr(defaultAddr.address) : ''}"
+               style="${defaultAddr ? 'display:none' : ''}">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">💬 ملاحظات إضافية</label>
@@ -516,11 +520,13 @@ async function confirmBooking(svcId) {
   const u = State.currentUser;
   const payMethod = State.selectedPaymentMethod || 'wallet';
   const requiresDelivery = s?.requiresDelivery !== false;
+  const deliveryType = State._deliveryType || 'delivery';
+  const isPickup     = requiresDelivery && deliveryType === 'pickup';
 
   // ─── حساب سعر التوصيل من النظام الجديد ─────────────────────────
   let deliveryFee = 0;
   let deliveryRoute = null;
-  if (requiresDelivery) {
+  if (requiresDelivery && !isPickup) {
     const fromArea = s?.location || s?.area || s?.address || '';
     const toArea   = addr || u?.address || u?.area || '';
     if (fromArea && toArea && typeof dp_calculateFee === 'function') {
@@ -583,6 +589,7 @@ async function confirmBooking(svcId) {
     customerId: u.uid, customerName: u.name, customerAddr: addr,
     vendorId: assignedVendorId, vendorName: assignedVendorName,
     driverId: null, driverName: null, requiresDelivery,
+    deliveryType: isPickup ? 'pickup' : 'delivery',
     date, time, note, status: 'pending',
   });
 
@@ -648,6 +655,7 @@ function renderMyOrders() {
             <div class="order-id">${o.orderId}</div>
             <div class="order-svc">${o.svcIcon||'🔷'} ${o.svcName}</div>
             ${o.tierName ? `<div style="font-size:12px;color:var(--primary);font-weight:700;margin-top:4px"><span style="background:rgba(139,92,246,0.08);padding:2px 6px;border-radius:6px;border:1px solid rgba(139,92,246,0.15)">🏷️ الفئة: ${escHtml(o.tierName)}</span></div>` : ''}
+            ${typeof ph37_pickupBadge === 'function' ? ph37_pickupBadge(o) : ''}
           </div>
           <span class="badge ${sBadge[o.status]||'badge-purple'}">${sLabel[o.status]||o.status}</span>
         </div>

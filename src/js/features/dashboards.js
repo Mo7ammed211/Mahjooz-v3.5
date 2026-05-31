@@ -1611,7 +1611,7 @@ function renderAdminOrders() {
 
           <div>
             <div class="order-card-price-tag">${o.total||o.finalPrice||0} ريال</div>
-            
+            ${typeof ph37_pickupBadge === 'function' ? `<div style="margin-top:6px">${ph37_pickupBadge(o)}</div>` : ''}
             <div class="usys-svc-footer" style="border-top:1px solid var(--border);padding-top:12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center">
               <button class="btn btn-sm btn-secondary" style="flex:1;padding:8px;font-size:12px;font-weight:700" onclick="showOrderDetails('${o.id}')">👁️ تفاصيل</button>
               
@@ -2219,7 +2219,8 @@ async function setDriverTab(tab) {
 
 function renderDriverOrders() {
   const u = State.currentUser;
-  const orders = AppData.orders.filter(o=>o.driverId===u.uid).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+  // طلبات الاستلام الشخصي لا تحتاج مندوباً — لا تظهر في لوحة المندوب
+  const orders = AppData.orders.filter(o=>o.driverId===u.uid && o.deliveryType !== 'pickup').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
   const driverCard   = typeof renderAvailabilityCard   === 'function' ? renderAvailabilityCard('driver')   : '';
   const driverBanner = typeof renderAvailabilityBanner === 'function' ? renderAvailabilityBanner('driver') : '';
 

@@ -526,13 +526,16 @@ window.confirmRejectDeposit = async function(depositId) {
 window.confirmBooking = async function(svcId) {
   const date = document.getElementById('bk-date').value;
   const time = document.getElementById('bk-time').value;
-  const addr = document.getElementById('bk-addr').value.trim();
-  const note = document.getElementById('bk-note').value.trim();
+  const addr = (document.getElementById('bk-addr')?.value || '').trim();
+  const note = (document.getElementById('bk-note')?.value || '').trim();
 
   if (!date) { toast('يرجى اختيار التاريخ','error'); return; }
 
   const s = AppData.services.find(x=>x.id===svcId);
   const u = State.currentUser;
+  const requiresDelivery = s?.requiresDelivery !== false;
+  const deliveryType     = State._deliveryType || 'delivery';
+  const isPickup         = requiresDelivery && deliveryType === 'pickup';
 
   // ─── حساب سعر التوصيل من النظام الجديد ─────────────────
   let deliveryFee = 0;
@@ -540,7 +543,7 @@ window.confirmBooking = async function(svcId) {
   const fromArea = s?.location || s?.area || s?.address || '';
   const toArea   = addr || u?.address || u?.area || '';
 
-  if (fromArea && toArea && typeof dp_calculateFee === 'function') {
+  if (!isPickup && fromArea && toArea && typeof dp_calculateFee === 'function') {
     const result = dp_calculateFee(fromArea, toArea);
     if (result.found) {
       deliveryFee = result.fee;
@@ -565,7 +568,8 @@ window.confirmBooking = async function(svcId) {
   const total = _svcPrice + deliveryFee;
 
   const orderDetails = {
-    svcId, date, time, addr, note, total, deliveryFee, deliveryRoute, s, u
+    svcId, date, time, addr, note, total, deliveryFee, deliveryRoute, s, u,
+    deliveryType: isPickup ? 'pickup' : 'delivery',
   };
 
   // Close the booking modal and open payment options

@@ -911,12 +911,15 @@ window.ph43_proceedCheckout = async function () {
 
     ${schedulingHtml}
 
-    ${savedAddresses.length && typeof ph41_renderAddressSelector === 'function' ? ph41_renderAddressSelector(savedAddresses) : ''}
-    <div class="form-group">
-      <label class="form-label">📍 عنوان التوصيل${savedAddresses.length ? ' (أو أدخل جديداً)' : ''}</label>
-      <input class="form-control" id="cart-addr" placeholder="المدينة، الحي، الشارع..."
-             value="${defaultAddr ? escAttr(defaultAddr.address) : ''}"
-             style="${defaultAddr ? 'display:none' : ''}">
+    ${typeof ph37_getDeliveryTypeSelectorHTML === 'function' ? ph37_getDeliveryTypeSelectorHTML('') : ''}
+    <div id="cart-addr-wrapper">
+      ${savedAddresses.length && typeof ph41_renderAddressSelector === 'function' ? ph41_renderAddressSelector(savedAddresses) : ''}
+      <div class="form-group">
+        <label class="form-label">📍 عنوان التوصيل${savedAddresses.length ? ' (أو أدخل جديداً)' : ''}</label>
+        <input class="form-control" id="cart-addr" placeholder="المدينة، الحي، الشارع..."
+               value="${defaultAddr ? escAttr(defaultAddr.address) : ''}"
+               style="${defaultAddr ? 'display:none' : ''}">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label">💬 ملاحظات عامة</label>
@@ -938,6 +941,7 @@ window.ph43_proceedCheckout = async function () {
     <button class="btn btn-primary btn-block btn-lg" style="margin-top:8px" onclick="ph43_confirmOrder()">✅ تأكيد الطلب</button>
   `);
   State.selectedPaymentMethod = 'wallet';
+  State._deliveryType = 'delivery';
   if (u?.uid) {
     getBalance(u.uid).then(bal => {
       const el = document.getElementById('checkout-wallet-bal');
@@ -976,12 +980,14 @@ window.ph43_confirmOrder = async function () {
     }
   }
 
-  const needsAddr = storeItems.length > 0 || bookingItems.some(i => i.requiresDelivery) || profItems.some(i => i.requiresDelivery);
+  const deliveryType = State._deliveryType || 'delivery';
+  const isPickup     = deliveryType === 'pickup';
+  const needsAddr = !isPickup && (storeItems.length > 0 || bookingItems.some(i => i.requiresDelivery) || profItems.some(i => i.requiresDelivery));
   if (needsAddr && !addr) { toast('أدخل عنوان التوصيل', 'error'); return; }
 
-  // رسوم التوصيل — فقط للمتاجر
+  // رسوم التوصيل — صفر إن كان استلام شخصي
   let deliveryFee = 0;
-  if (storeItems.length && typeof dp_calculateFee === 'function') {
+  if (!isPickup && storeItems.length && typeof dp_calculateFee === 'function') {
     const uniqueStores = [...new Set(storeItems.map(i => i.storeId))];
     for (const sid of uniqueStores) {
       const storeObj = (AppData.stores || []).find(s => s.id === sid);
@@ -995,7 +1001,7 @@ window.ph43_confirmOrder = async function () {
         deliveryFee += AppData.platformSettings?.deliveryFee || 0;
       }
     }
-  } else if (storeItems.length) {
+  } else if (!isPickup && storeItems.length) {
     deliveryFee = AppData.platformSettings?.deliveryFee || 0;
   }
 
@@ -1037,9 +1043,10 @@ window.ph43_confirmOrder = async function () {
         servicePrice: storeSubtotal, deliveryFee, codFee,
         total: storeSubtotal + deliveryFee + codFee,
         paymentMethod: payMethod,
-        customerId: u.uid, customerName: u.name, customerAddr: addr,
+        customerId: u.uid, customerName: u.name, customerAddr: isPickup ? '' : addr,
         vendorId: null, vendorName: storeNames,
         driverId: null, driverName: null,
+        deliveryType: isPickup ? 'pickup' : 'delivery',
         note, status: 'pending', housePics,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
@@ -1060,7 +1067,7 @@ window.ph43_confirmOrder = async function () {
         providerUid: item.providerUid || svc?.providerUid || '',
         providerName: item.providerName || svc?.providerName || '',
         vendorId: item.providerUid || svc?.providerUid || '',
-        customerId: u.uid, customerName: u.name, customerAddr: addr,
+        customerId: u.uid, customerName: u.name, customerAddr: isPickup ? '' : addr,
         userId: u.uid, userName: u.name,
         servicePrice: item.price || 0, total: item.price || 0,
         paymentMethod: payMethod,
@@ -1070,6 +1077,7 @@ window.ph43_confirmOrder = async function () {
         time: periodLabel,
         note,
         requiresDelivery: item.requiresDelivery,
+        deliveryType: isPickup ? 'pickup' : 'delivery',
         status: 'pending',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
