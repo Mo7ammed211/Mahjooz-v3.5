@@ -105,15 +105,30 @@ class ReportsManager {
           ? (orders.reduce((sum, o) => sum + (o.rating || 0), 0) / orders.length).toFixed(1)
           : 0;
 
+        // حساب متوسط وقت الاستجابة
+        const respondedOrders = orders.filter(o => o.responseTimeSecs != null && o.responseTimeSecs > 0);
+        const avgResponseSecs = respondedOrders.length > 0
+          ? Math.round(respondedOrders.reduce((s, o) => s + o.responseTimeSecs, 0) / respondedOrders.length)
+          : null;
+        const acceptedOrders  = orders.filter(o => o.responseAction === 'accepted').length;
+        const rejectedOrders  = orders.filter(o => o.responseAction === 'rejected').length;
+        const acceptRate      = respondedOrders.length > 0
+          ? ((acceptedOrders / respondedOrders.length) * 100).toFixed(0)
+          : null;
+
         vendorData.push({
           vendorId: vendor.id,
-          vendorName: vendor.displayName || 'بدون اسم',
+          vendorName: vendor.displayName || vendor.name || 'بدون اسم',
           totalOrders: orders.length,
           completedOrders,
           cancelledOrders,
           completionRate: orders.length > 0 ? ((completedOrders / orders.length) * 100).toFixed(0) : 0,
           totalRevenue,
           avgRating,
+          avgResponseSecs,
+          acceptedOrders,
+          rejectedOrders,
+          acceptRate,
           joinDate: vendor.createdAt?.toDate?.().toLocaleDateString('ar-YE') || '-'
         });
       }
@@ -694,20 +709,32 @@ async function renderSalesReport() {
 }
 
 // ─── تقرير البائعين ───────────────────────────────────────────────
+function _fmtResponseTime(secs) {
+  if (secs == null) return '<span style="color:var(--text-muted,#64748b)">—</span>';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  const txt = m > 0 ? `${m}د ${s}ث` : `${s}ث`;
+  const color = secs <= 120 ? '#22c55e' : secs <= 300 ? '#f59e0b' : '#ef4444';
+  return `<span style="color:${color};font-weight:800">${txt}</span>`;
+}
+
 async function renderVendorsReport() {
   const vendorPerformance = await reportsManager.getVendorPerformance();
 
   return `
   <div class="vendors-report">
-    <h3>🏪 أداء البائعين</h3>
-    <table class="report-table full-width">
+    <h3>🏪 أداء البائعين والمزوّدين</h3>
+    <div style="overflow-x:auto">
+    <table class="report-table full-width" style="min-width:820px">
       <thead>
         <tr>
           <th>الاسم</th>
           <th>الطلبات</th>
           <th>المكتملة</th>
-          <th>المإلغاة</th>
+          <th>الملغاة</th>
           <th>معدل الإنجاز</th>
+          <th>⏱ متوسط الاستجابة</th>
+          <th>✅ معدل القبول</th>
           <th>الإيرادات</th>
           <th>التقييم</th>
           <th>تاريخ الانضمام</th>
@@ -716,11 +743,22 @@ async function renderVendorsReport() {
       <tbody>
         ${vendorPerformance.map(vendor => `
         <tr>
-          <td>${vendor.vendorName}</td>
+          <td style="font-weight:700">${vendor.vendorName}</td>
           <td>${vendor.totalOrders}</td>
-          <td>${vendor.completedOrders}</td>
-          <td>${vendor.cancelledOrders}</td>
-          <td>${vendor.completionRate}%</td>
+          <td style="color:#22c55e">${vendor.completedOrders}</td>
+          <td style="color:#ef4444">${vendor.cancelledOrders}</td>
+          <td>
+            <span style="font-weight:800;color:${Number(vendor.completionRate)>=80?'#22c55e':Number(vendor.completionRate)>=50?'#f59e0b':'#ef4444'}">
+              ${vendor.completionRate}%
+            </span>
+          </td>
+          <td>${_fmtResponseTime(vendor.avgResponseSecs)}</td>
+          <td>
+            ${vendor.acceptRate != null
+              ? `<span style="font-weight:800;color:${Number(vendor.acceptRate)>=80?'#22c55e':Number(vendor.acceptRate)>=50?'#f59e0b':'#ef4444'}">${vendor.acceptRate}%</span>
+                 <span style="font-size:10px;color:var(--text-muted,#64748b)">(${vendor.acceptedOrders}✅ / ${vendor.rejectedOrders}❌)</span>`
+              : '<span style="color:var(--text-muted,#64748b)">—</span>'}
+          </td>
           <td>${(vendor.totalRevenue || 0).toLocaleString()} ر.ي</td>
           <td>⭐ ${vendor.avgRating || 0}</td>
           <td>${vendor.joinDate}</td>
@@ -728,8 +766,16 @@ async function renderVendorsReport() {
         `).join('')}
       </tbody>
     </table>
+    </div>
 
-    <div class="export-buttons">
+    <div style="margin-top:12px;padding:12px 16px;background:rgba(245,158,11,0.08);border-radius:10px;border:1.5px solid rgba(245,158,11,0.2);font-size:12px;color:var(--text-secondary,#94a3b8)">
+      ⏱ <strong>متوسط الاستجابة:</strong>
+      <span style="color:#22c55e">● أقل من دقيقتين = ممتاز</span> ·
+      <span style="color:#f59e0b">● 2-5 دقائق = جيد</span> ·
+      <span style="color:#ef4444">● أكثر من 5 دقائق = بطيء</span>
+    </div>
+
+    <div class="export-buttons" style="margin-top:12px">
       <button class="btn btn-outline" onclick="exportReport('vendors', 'csv')">📥 تصدير CSV</button>
     </div>
   </div>

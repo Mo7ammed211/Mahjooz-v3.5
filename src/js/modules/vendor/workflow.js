@@ -215,28 +215,53 @@ window.renderProviderDashboard = function() {
 window.ph21_providerAccept = async function(orderId) {
   const o = (AppData.orders || []).find(x => x.id === orderId);
   if (!o) return;
+  const respondedAt = new Date();
+  const notifiedMs = o.vendorNotifiedAt?.toMillis ? o.vendorNotifiedAt.toMillis()
+    : o.vendorNotifiedAt ? new Date(o.vendorNotifiedAt).getTime() : null;
+  const responseTimeSecs = notifiedMs ? Math.round((respondedAt.getTime() - notifiedMs) / 1000) : null;
+
   if (o.requiresDelivery !== false) {
     if (typeof window.__buildDriverPool === 'function') {
       const dPool = window.__buildDriverPool(o);
       await fsUpdate('orders', orderId, {
         status: 'provider_accepted',
-        providerAcceptedAt: new Date(),
+        providerAcceptedAt: respondedAt,
+        respondedAt,
+        responseAction: 'accepted',
+        responseTimeSecs,
         driverPool: dPool, driverIdx: 0, driverHistory: [],
         assignedDriverId: dPool[0] || null, driverId: dPool[0] || null
       });
-      await fsAdd('order_routing', { orderId, kind: 'provider_accept', uid: State.currentUser.uid, at: new Date() });
+      await fsAdd('order_routing', { orderId, kind: 'provider_accept', uid: State.currentUser.uid, at: respondedAt, responseTimeSecs });
       toast(dPool.length ? 'تم القبول — تم إسناد الطلب لأقرب مندوب' : 'تم القبول — لا يوجد مندوبون', 'success');
     } else {
       toast('النظام غير جاهز لتعيين مندوب', 'error');
     }
   } else {
-    await fsUpdate('orders', orderId, { status: 'approved', approvedByProviderAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await fsUpdate('orders', orderId, {
+      status: 'approved',
+      approvedByProviderAt: respondedAt,
+      respondedAt,
+      responseAction: 'accepted',
+      responseTimeSecs,
+    });
     toast('✅ تم قبول الطلب (بدون توصيل)', 'success');
   }
   await render();
 };
 window.ph21_providerReject = async function(orderId) {
-  await fsUpdate('orders', orderId, { status: 'rejected', rejectedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  const o = (AppData.orders || []).find(x => x.id === orderId);
+  const respondedAt = new Date();
+  const notifiedMs = o?.vendorNotifiedAt?.toMillis ? o.vendorNotifiedAt.toMillis()
+    : o?.vendorNotifiedAt ? new Date(o.vendorNotifiedAt).getTime() : null;
+  const responseTimeSecs = notifiedMs ? Math.round((respondedAt.getTime() - notifiedMs) / 1000) : null;
+  await fsUpdate('orders', orderId, {
+    status: 'rejected',
+    rejectedAt: respondedAt,
+    respondedAt,
+    responseAction: 'rejected',
+    responseTimeSecs,
+  });
   toast('❌ تم رفض الطلب', 'success'); await render();
 };
 

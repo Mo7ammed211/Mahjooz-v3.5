@@ -115,6 +115,7 @@ window.ph43_approveAndAutoRoute = async function(orderId) {
       providerUid: firstVendorId,
       providerName: firstVendor?.name || '—',
       status: 'pending_provider',
+      vendorNotifiedAt: new Date(),
       locationCount: 1,
       additionalDeliveryFee: 0,
       routingLog: [{ at: new Date(), msg: `تمت الموافقة الإدارية. النظام اختار تلقائياً ${pool.length} مزودين معتمدين. البداية مع: ${firstVendorId}` }]
@@ -290,6 +291,7 @@ window.ph43_routeToNextVendor = async function(orderId, rejectedItems) {
       providerUid: nextVendorId,
       providerName: nextVendor?.name || '—',
       status: 'pending_provider',
+      vendorNotifiedAt: new Date(),
       locationCount: newLocationCount,
       additionalDeliveryFee: newExtraFee,
       total: (o.total || 0) + 10, // Update total price
