@@ -1115,7 +1115,7 @@ async function render() {
   
   const pages = {
     home: renderHome, listing: renderListing,
-    myorders: renderMyOrders, wallet: renderMyWallet, rate: renderRatingPage, settings: renderSettingsPage,
+    myorders: renderMyOrders, wallet: renderMyWallet, mydeposits: renderMyDeposits, rate: renderRatingPage, settings: renderSettingsPage,
     admin: renderAdmin, staff: renderStaff,
     vendor: renderVendor, driver: renderDriver,
     page: renderStaticPage,

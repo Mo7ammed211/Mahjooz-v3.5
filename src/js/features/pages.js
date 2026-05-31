@@ -728,6 +728,21 @@ function renderMyWallet() {
         ➕ شحن الرصيد
       </button>
     </div>
+    <!-- زر سجل الإيداعات -->
+    <button onclick="navigate('mydeposits')"
+      style="width:100%;margin-top:16px;background:rgba(59,130,246,0.08);border:1.5px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:14px;padding:14px 20px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Cairo',sans-serif;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s"
+      onmouseover="this.style.background='rgba(59,130,246,0.14)'"
+      onmouseout="this.style.background='rgba(59,130,246,0.08)'">
+      <span style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:22px">🏦</span>
+        <span>
+          <span style="display:block">سجل إيداعاتي البنكية</span>
+          <span style="font-size:11px;font-weight:400;color:var(--text-muted)">تتبع حالة الإيداعات (مقبول / قيد المراجعة / مرفوض)</span>
+        </span>
+      </span>
+      <span style="font-size:18px;opacity:0.6">←</span>
+    </button>
+
     <div class="section-title" style="margin-top:24px">📜 سجل المعاملات</div>
     ${txns.length ? `<div class="table-wrap"><table class="admin-table">
       <thead><tr><th>النوع</th><th>المبلغ</th><th>الوصف</th><th>التاريخ</th></tr></thead>
@@ -780,6 +795,136 @@ async function submitRechargeRequest() {
   closeModal(); toast('تم إرسال طلب الشحن! سيتم المراجعة خلال 24 ساعة ✅','success');
   await navigate('wallet');
 }
+
+// ─── My Deposits (سجل الإيداعات البنكية للعميل) ─────────────
+function renderMyDeposits() {
+  const u        = State.currentUser;
+  const deposits = (AppData.bankDeposits || [])
+    .filter(d => d.customerId === u.uid)
+    .sort((a, b) => {
+      const ta = a.createdAt?.seconds || (a.createdAt instanceof Date ? a.createdAt.getTime()/1000 : 0);
+      const tb = b.createdAt?.seconds || (b.createdAt instanceof Date ? b.createdAt.getTime()/1000 : 0);
+      return tb - ta;
+    });
+
+  const statusInfo = {
+    pending:  { label: '⏳ قيد المراجعة', badge: 'badge-gold',   icon: '⏳' },
+    approved: { label: '✅ تم القبول',     badge: 'badge-teal',   icon: '✅' },
+    rejected: { label: '❌ مرفوض',         badge: 'badge-rose',   icon: '❌' },
+  };
+
+  const cards = deposits.length ? deposits.map(d => {
+    const s   = statusInfo[d.status] || statusInfo.pending;
+    const dt  = d.createdAt
+      ? (d.createdAt.toDate ? d.createdAt.toDate() : new Date(d.createdAt.seconds ? d.createdAt.seconds * 1000 : d.createdAt))
+      : null;
+    const dtStr = dt ? dt.toLocaleString('ar-YE', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+
+    return `
+    <div style="
+      background:var(--card-bg);
+      border:1.5px solid ${d.status==='approved' ? 'rgba(16,185,129,0.3)' : d.status==='rejected' ? 'rgba(239,68,68,0.3)' : 'var(--border)'};
+      border-radius:16px;
+      padding:18px 20px;
+      margin-bottom:14px;
+      font-family:'Cairo',sans-serif;
+    ">
+      <!-- رأس البطاقة -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:42px;height:42px;border-radius:12px;background:${d.status==='approved'?'rgba(16,185,129,0.12)':d.status==='rejected'?'rgba(239,68,68,0.1)':'rgba(251,191,36,0.1)'};display:flex;align-items:center;justify-content:center;font-size:22px">
+            ${s.icon}
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:800;color:var(--text)">إيداع بنكي</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${dtStr}</div>
+          </div>
+        </div>
+        <span class="badge ${s.badge}" style="font-size:12px;padding:5px 12px">${s.label}</span>
+      </div>
+
+      <!-- تفاصيل -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:${d.status==='rejected' && d.rejectReason ? '14px' : '0'}">
+        <div style="background:var(--bg,rgba(255,255,255,0.03));border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+          <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">المبلغ</div>
+          <div style="font-size:18px;font-weight:900;color:${d.status==='approved'?'#10b981':d.status==='rejected'?'#ef4444':'var(--text)'}">
+            ${(d.amount||0).toLocaleString('ar-YE')} <span style="font-size:12px;font-weight:600">ر.ي</span>
+          </div>
+        </div>
+        <div style="background:var(--bg,rgba(255,255,255,0.03));border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+          <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">رقم الطلب</div>
+          <div style="font-size:13px;font-weight:800;color:var(--text)">${d.orderId || '—'}</div>
+        </div>
+        ${d.bankName ? `
+        <div style="grid-column:1/-1;background:var(--bg,rgba(255,255,255,0.03));border:1px solid var(--border);border-radius:10px;padding:10px 14px">
+          <div style="font-size:10.5px;color:var(--text-muted);margin-bottom:3px">الحساب البنكي</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">🏦 ${escHtml(d.bankName)}</div>
+        </div>` : ''}
+      </div>
+
+      <!-- سبب الرفض -->
+      ${d.status === 'rejected' && d.rejectReason ? `
+      <div style="background:rgba(239,68,68,0.07);border:1.5px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px 14px;font-size:12.5px;color:#ef4444;font-weight:700;display:flex;align-items:flex-start;gap:8px">
+        <span style="flex-shrink:0">⚠️</span>
+        <span><strong>سبب الرفض:</strong> ${escHtml(d.rejectReason)}</span>
+      </div>` : ''}
+
+      ${d.status === 'rejected' && !d.rejectReason ? `
+      <div style="background:rgba(239,68,68,0.07);border:1.5px solid rgba(239,68,68,0.2);border-radius:10px;padding:10px 14px;font-size:12px;color:rgba(239,68,68,0.8)">
+        يرجى التواصل مع الدعم لمعرفة سبب الرفض.
+      </div>` : ''}
+
+      ${d.status === 'approved' && d.approvedBy ? `
+      <div style="margin-top:10px;font-size:11px;color:var(--text-muted);text-align:left;direction:ltr">
+        ✅ اعتمد بواسطة: ${escHtml(d.approvedBy)}
+      </div>` : ''}
+    </div>`;
+  }).join('') : `
+  <div class="empty-state">
+    <div class="empty-icon">🏦</div>
+    <div class="empty-title">لا توجد إيداعات بعد</div>
+    <p style="color:var(--text-muted);font-size:13px;margin-top:8px">إيداعاتك البنكية ستظهر هنا مع حالتها ونتيجة المراجعة</p>
+  </div>`;
+
+  /* ── ملخص سريع ── */
+  const total     = deposits.length;
+  const approved  = deposits.filter(d => d.status === 'approved').length;
+  const pending   = deposits.filter(d => d.status === 'pending').length;
+  const rejected  = deposits.filter(d => d.status === 'rejected').length;
+  const totalAmt  = deposits.filter(d => d.status === 'approved').reduce((s, d) => s + (d.amount || 0), 0);
+
+  const summary = total ? `
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;font-family:'Cairo',sans-serif">
+    ${[
+      { label:'الكل',      val: total,                                 color:'var(--primary)', bg:'rgba(124,58,237,0.08)' },
+      { label:'مقبول',     val: approved,                              color:'#10b981',         bg:'rgba(16,185,129,0.08)' },
+      { label:'قيد المراجعة', val: pending,                            color:'#fbbf24',         bg:'rgba(251,191,36,0.08)' },
+      { label:'مرفوض',     val: rejected,                              color:'#ef4444',         bg:'rgba(239,68,68,0.08)'  },
+    ].map(s => `
+      <div style="background:${s.bg};border:1px solid ${s.color}30;border-radius:12px;padding:12px 8px;text-align:center">
+        <div style="font-size:20px;font-weight:900;color:${s.color}">${s.val}</div>
+        <div style="font-size:10.5px;color:var(--text-muted);margin-top:2px">${s.label}</div>
+      </div>`).join('')}
+  </div>
+  ${totalAmt > 0 ? `
+  <div style="background:rgba(16,185,129,0.07);border:1.5px solid rgba(16,185,129,0.25);border-radius:12px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;font-family:'Cairo',sans-serif">
+    <span style="font-size:13px;color:var(--text-muted);font-weight:700">💰 إجمالي الإيداعات المقبولة</span>
+    <span style="font-size:17px;font-weight:900;color:#10b981">${totalAmt.toLocaleString('ar-YE')} ر.ي</span>
+  </div>` : ''}` : '';
+
+  return `<div id="app-content">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <button class="back-btn" onclick="navigate('wallet')">→ رجوع</button>
+      <h1>🏦 سجل إيداعاتي</h1>
+      <button class="btn btn-secondary btn-sm" onclick="navigate('mydeposits')">🔄 تحديث</button>
+    </div>
+    <div class="listing-container" style="max-width:680px;margin:0 auto">
+      ${summary}
+      ${cards}
+    </div>
+  </div>`;
+}
+window.renderMyDeposits = renderMyDeposits;
 
 // ─── Rating ───────────────────────────────
 function renderRatingPage() {
