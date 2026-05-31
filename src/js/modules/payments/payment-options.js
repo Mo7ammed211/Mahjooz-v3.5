@@ -554,7 +554,15 @@ window.confirmBooking = async function(svcId) {
     deliveryFee = AppData.platformSettings?.deliveryFee || 0;
   }
 
-  const total = (s?.price||0) + deliveryFee;
+  // ── التوصيل المجاني ───────────────────────────────────────────
+  const _svcPrice = s?.price || 0;
+  const _sectionId = s?.section || s?.sectionId || s?.category || 'professions';
+  if (deliveryFee > 0 && typeof fs_isFreeShipping === 'function' && fs_isFreeShipping(_svcPrice, _sectionId)) {
+    deliveryFee = 0;
+    if (deliveryRoute) deliveryRoute.fee = 0;
+  }
+
+  const total = _svcPrice + deliveryFee;
 
   const orderDetails = {
     svcId, date, time, addr, note, total, deliveryFee, deliveryRoute, s, u

@@ -998,7 +998,15 @@ window.ph43_confirmOrder = async function () {
   }
 
   const codFee   = payMethod === 'cod' ? 5 : 0;
-  const grandTotal = ph43_cartTotal() + deliveryFee + codFee;
+
+  // ── التوصيل المجاني للمتاجر ───────────────────────────────────
+  const _storeSubtotal = ph43_cartTotal();
+  if (deliveryFee > 0 && typeof fs_isFreeShipping === 'function' && fs_isFreeShipping(_storeSubtotal, 'stores')) {
+    deliveryFee = 0;
+    toast('🎉 مبروك! حصلت على توصيل مجاني', 'success');
+  }
+
+  const grandTotal = _storeSubtotal + deliveryFee + codFee;
 
   if (payMethod === 'wallet') {
     const bal = await getBalance(u.uid);

@@ -30,6 +30,7 @@ function _adminHubForTab(tab) {
     users:'hub_users', permissions:'hub_users', providers_database:'hub_users', drivers_database:'hub_users',
     ph17settings:'hub_settings', signup_settings:'hub_settings', delivery_pricing:'hub_settings',
     delivery_addresses:'hub_settings', login_settings:'hub_settings', regions:'hub_settings',
+    free_shipping:'hub_settings',
   };
   return m[tab] || 'hub_stats';
 }
@@ -156,6 +157,7 @@ window.renderAdmin = function () {
         { k: 'cms_pages',        icon: '📄', label: 'الصفحات الثابتة',  desc: 'شروط الخدمة وسياسة الخصوصية' },
         { k: 'ph17settings',     icon: '⚙️', label: 'الإعدادات العامة', desc: 'إعدادات النظام الشاملة' },
         { k: 'direct_routing',   icon: '🚦', label: 'التوجيه المباشر',  desc: 'ضبط توزيع الطلبات تلقائياً' },
+        { k: 'free_shipping',    icon: '🚚', label: 'التوصيل المجاني',   desc: 'شروط الحصول على توصيل مجاني لكل قسم' },
         { k: 'sys_visibility',   icon: '🛡️', label: 'التحكم في الأقسام', desc: 'إظهار وإخفاء أقسام المنصة وصيانتها',
           badge: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v2')||'{}'); const hidden = ['bookings','services','stores','digital','offers'].filter(k=>d[k]===false).length; const maint = ['bookings','services','stores','digital','offers'].filter(k=>!!d[k+'_maint']).length; return (hidden+maint)||null; } catch(e){ return null; } })(),
           urgent: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v2')||'{}'); return !!d.full_maint; } catch(e){ return false; } })()
@@ -261,6 +263,7 @@ window.renderAdmin = function () {
           ${activeTab === 'providers_database'  ? (typeof renderAdminProvidersDatabase === 'function' ? renderAdminProvidersDatabase() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل قاعدة بيانات المزودين...</div>') : ''}
           ${activeTab === 'drivers_database'    ? (typeof renderAdminDriversDatabase === 'function' ? renderAdminDriversDatabase() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل قاعدة بيانات المندوبين...</div>') : ''}
           ${activeTab === 'sys_visibility'      ? (typeof renderAdminSectionVisibility === 'function' ? renderAdminSectionVisibility() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التحكم...</div>') : ''}
+          ${activeTab === 'free_shipping'       ? (typeof renderAdminFreeShipping === 'function' ? renderAdminFreeShipping() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التوصيل المجاني...</div>') : ''}
         </main>
       </div>
     </div>

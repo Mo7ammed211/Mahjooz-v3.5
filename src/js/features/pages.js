@@ -540,6 +540,14 @@ async function confirmBooking(svcId) {
   const tier      = window.__ph40_selectedTier;
   const svcPrice  = tier ? tier.price : (s?.price || 0);
   const tierName  = tier ? tier.name  : null;
+
+  // ── التوصيل المجاني ───────────────────────────────────────────
+  const _sectionId = s?.section || s?.sectionId || s?.category || 'services';
+  if (deliveryFee > 0 && typeof fs_isFreeShipping === 'function' && fs_isFreeShipping(svcPrice, _sectionId)) {
+    deliveryFee = 0;
+    toast('🎉 مبروك! حصلت على توصيل مجاني', 'success');
+  }
+
   const total     = svcPrice + deliveryFee + codFee;
 
   if (svcPrice && payMethod === 'wallet') {
