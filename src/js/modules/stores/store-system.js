@@ -794,7 +794,8 @@ function ph43_renderCartBody() {
       <span style="font-weight:800;font-size:20px;background:var(--gradient-main);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${total.toLocaleString('ar-YE')} ﷼</span>
     </div>
     ${hasApprox ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;padding:6px 8px;background:rgba(0,0,0,0.1);border-radius:6px">⚠️ أسعار الخدمات والمهن قد تخضع للتأكيد النهائي من المزود</div>` : ''}
-  </div>`;
+  </div>
+  ${typeof fs_getShippingHintHTML === 'function' ? fs_getShippingHintHTML(total, 'stores') : ''}`;
 
   body.innerHTML = html;
 
@@ -906,6 +907,7 @@ window.ph43_proceedCheckout = async function () {
         <div style="font-size:11px;color:var(--text-muted);margin-top:1px">+ رسوم التوصيل إن وجدت</div>
       </div>
     </div>
+    ${typeof fs_getShippingHintHTML === 'function' ? fs_getShippingHintHTML(ph43_cartTotal(), 'stores') : ''}
 
     ${schedulingHtml}
 

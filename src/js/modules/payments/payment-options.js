@@ -600,11 +600,12 @@ window.showDynamicPaymentModal = async function(orderDetails) {
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
           <span style="color:var(--text-muted)">🚚 التوصيل (${escHtml(orderDetails.deliveryRoute.from)} ← ${escHtml(orderDetails.deliveryRoute.to)})</span>
-          <strong style="color:#10b981">${orderDetails.deliveryFee.toLocaleString('ar')} ريال</strong>
+          <strong style="color:${orderDetails.deliveryFee === 0 ? '#10b981' : 'inherit'}">${orderDetails.deliveryFee === 0 ? 'مجاني 🎉' : orderDetails.deliveryFee.toLocaleString('ar') + ' ريال'}</strong>
         </div>
       </div>` : orderDetails.deliveryFee > 0 ? `
       <div style="text-align:center;font-size:13px;color:var(--text-muted);margin-top:4px">رسوم التوصيل: ${orderDetails.deliveryFee} ريال</div>` : ''}
     </div>
+    ${typeof fs_getShippingHintHTML === 'function' ? fs_getShippingHintHTML(orderDetails.total - (orderDetails.deliveryFee||0), orderDetails.s?.section || orderDetails.s?.sectionId || orderDetails.s?.category || 'professions') : ''}
     
     ${methods.length ? `
       <div class="payment-methods" style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">

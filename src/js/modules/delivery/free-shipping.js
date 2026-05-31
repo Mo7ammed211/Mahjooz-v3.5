@@ -289,6 +289,67 @@ window.fs_confirmDelete = function (id) {
     </div>`);
 };
 
+// ══════════════════════════════════════════════════════════════════
+//  تذكير التوصيل المجاني — يُعيد HTML جاهزاً للعرض
+//  الاستخدام: fs_getShippingHintHTML(orderTotal, sectionId)
+//  → '' إذا لا يوجد شيء لعرضه
+// ══════════════════════════════════════════════════════════════════
+window.fs_getShippingHintHTML = function (orderTotal, sectionId) {
+  const rules = (AppData.freeShippingRules || []).filter(r => {
+    if (!r.active) return false;
+    if (r.sections && r.sections.length > 0 && sectionId) {
+      return r.sections.includes(sectionId);
+    }
+    return true;
+  });
+  if (!rules.length) return '';
+
+  // هل يستحق التوصيل المجاني الآن؟
+  const qualifies = rules.some(r => orderTotal >= (r.minAmount || 0));
+  if (qualifies) {
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;
+                  background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.05));
+                  border:1px solid rgba(16,185,129,.3);border-radius:12px;margin-bottom:12px">
+        <span style="font-size:20px">🚚</span>
+        <span style="font-size:13px;font-weight:700;color:#10b981">مبروك! حصلت على توصيل مجاني</span>
+      </div>`;
+  }
+
+  // أقرب قاعدة يمكن الوصول إليها
+  const sorted = rules
+    .filter(r => r.minAmount > orderTotal)
+    .sort((a, b) => a.minAmount - b.minAmount);
+  if (!sorted.length) return '';
+
+  const closest  = sorted[0];
+  const needed   = closest.minAmount - orderTotal;
+  const maxHint  = closest.minAmount * 0.7; // لا نُظهر التذكير إلا إذا كان المتبقي ≤ 70% من الحد
+
+  if (needed > maxHint) return '';
+
+  const pct = Math.round(((closest.minAmount - needed) / closest.minAmount) * 100);
+  const barColor = pct >= 70 ? '#f59e0b' : '#7c3aed';
+
+  return `
+    <div style="padding:12px 14px;background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(245,158,11,.04));
+                border:1px solid rgba(245,158,11,.3);border-radius:12px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:18px">🚚</span>
+        <span style="font-size:13px;font-weight:700;color:#f59e0b">
+          أضف <strong>${needed.toLocaleString('ar-YE')} ريال</strong> للحصول على توصيل مجاني!
+        </span>
+      </div>
+      <div style="background:rgba(0,0,0,.12);border-radius:20px;height:6px;overflow:hidden">
+        <div style="width:${pct}%;height:100%;background:${barColor};border-radius:20px;transition:width .4s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:5px">
+        <span>0</span>
+        <span>${closest.minAmount.toLocaleString('ar-YE')} ريال</span>
+      </div>
+    </div>`;
+};
+
 // ── تحميل تلقائي عند بدء التطبيق ─────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => { fs_loadRules().catch(() => {}); });
 if (typeof window.AppData !== 'undefined') { fs_loadRules().catch(() => {}); }
