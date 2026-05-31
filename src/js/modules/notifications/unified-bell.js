@@ -12,6 +12,7 @@
     notif:  { label: '📨 إشعاراتي',       color: '#0ea5e9', items: [], count: 0 },
     driver: { label: '🚚 طلبات التوصيل', color: '#0d9488', items: [], count: 0 },
     wallet: { label: '💰 تنبيهات مالية', color: '#f59e0b', items: [], count: 0 },
+    vendor: { label: '🏪 طلباتي',         color: '#10b981', items: [], count: 0 },
   };
 
   const SOURCE_META = {
@@ -19,14 +20,15 @@
     notif:  { label: 'إشعاراتي', icon: '📨' },
     driver: { label: 'توصيل',   icon: '🚚' },
     wallet: { label: 'مالية',   icon: '💰' },
+    vendor: { label: 'طلباتي',  icon: '🏪' },
   };
 
   /* ── Role → relevant sources ───────────────────────────────── */
   const ROLE_SOURCES = {
     admin:    ['live', 'notif', 'driver', 'wallet'],
     staff:    ['live', 'notif', 'wallet'],
-    vendor:   ['live', 'notif'],
-    provider: ['live', 'notif'],
+    vendor:   ['vendor', 'notif'],
+    provider: ['vendor', 'notif'],
     driver:   ['driver', 'notif'],
     customer: ['notif'],
   };
@@ -118,6 +120,18 @@
     </div>`;
   }
 
+  function _renderItemVendor(item) {
+    const nav = _esc(item.nav || 'vendor');
+    return `<div class="ub-item" onclick="navigate('${nav}');toggleUnifiedNotif()">
+      <span class="ub-item-icon">${item.icon || '🏪'}</span>
+      <div class="ub-item-body">
+        <div class="ub-item-title">${_esc(item.title)}</div>
+        ${item.sub ? `<div class="ub-item-sub">${_esc(item.sub)}</div>` : ''}
+        <div class="ub-item-time">${_esc(item.time || '')}</div>
+      </div>
+    </div>`;
+  }
+
   function _renderItemWallet(item) {
     const nav = _esc(item.nav || '');
     return `<div class="ub-item ${item.unread ? 'ub-unread' : ''}"
@@ -191,6 +205,7 @@
             id === 'live'   ? _renderItemLive(item)   :
             id === 'notif'  ? _renderItemNotif(item)  :
             id === 'wallet' ? _renderItemWallet(item) :
+            id === 'vendor' ? _renderItemVendor(item) :
                               _renderItemDriver(item)
           ).join('')}
           ${src.items.length > 10
