@@ -67,19 +67,15 @@
     _hideBanner();
     const navBtn = document.getElementById('pwa-nav-btn');
     if (navBtn) navBtn.style.display = 'none';
-    const fab = document.getElementById('pwa-fab-btn');
-    if (fab) fab.style.display = 'none';
     try { localStorage.setItem(DISMISSED_KEY, Date.now()); } catch (_) {}
   }
 
   window.addEventListener('appinstalled', _onInstalled);
 
-  // ── Show nav button + FAB ─────────────
+  // ── Show nav button ─────────────────
   function _showNavBtn() {
     const navBtn = document.getElementById('pwa-nav-btn');
     if (navBtn) navBtn.classList.add('pwa-ready');
-    const fab = document.getElementById('pwa-fab-btn');
-    if (fab) fab.classList.add('pwa-fab-visible');
   }
 
   // ── iOS Guide modal ───────────────────
