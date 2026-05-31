@@ -173,7 +173,7 @@
       localStorage.setItem(LS_KEY, JSON.stringify(this._data));
       try {
         await db.collection(FS_COL).doc(FS_DOC).set(this._data, { merge: true });
-      } catch (e) { console.error('[SV] Save error:', e); showToast?.('خطأ في الحفظ: ' + e.message, 'error'); return; }
+      } catch (e) { console.error('[SV] Save error:', e); window.toast?.('خطأ في الحفظ: ' + e.message, 'error'); return; }
       this._apply();
     },
 
@@ -566,12 +566,12 @@
 
     // تحديث إحصاءات الرأس
     _sv3_updateStats();
-    showToast?.(window.SV.get(key) ? '✅ تم التفعيل' : '🙈 تم الإخفاء', 'success');
+    window.toast?.(window.SV.get(key) ? '✅ تم التفعيل' : '🙈 تم الإخفاء', 'success');
   };
 
   window.sv3_saveMsg = async function (key, msg) {
     await window.SV.set(key + '_maint_msg', msg);
-    showToast?.('✅ تم حفظ رسالة الصيانة', 'success');
+    window.toast?.('✅ تم حفظ رسالة الصيانة', 'success');
   };
 
   function _sv3_updateStats() {
@@ -602,7 +602,7 @@
     try { await db.collection(FS_COL).doc(FS_DOC).set(window.SV._data, { merge: true }); } catch (e) {}
     window.SV._apply();
     hideLoader?.();
-    showToast?.('✅ تم تفعيل وإظهار جميع الميزات', 'success');
+    window.toast?.('✅ تم تفعيل وإظهار جميع الميزات', 'success');
     sv3_setTab(window._svActiveTab || 'main');
     _sv3_updateStats();
   };
@@ -617,7 +617,7 @@
     try { await db.collection(FS_COL).doc(FS_DOC).set(window.SV._data, { merge: true }); } catch (e) {}
     window.SV._apply();
     hideLoader?.();
-    showToast?.('🔧 تم تفعيل وضع الصيانة لجميع الأقسام', 'warning');
+    window.toast?.('🔧 تم تفعيل وضع الصيانة لجميع الأقسام', 'warning');
     sv3_setTab(window._svActiveTab || 'main');
     _sv3_updateStats();
   };
@@ -631,7 +631,7 @@
     try { await db.collection(FS_COL).doc(FS_DOC).set(window.SV._data, { merge: true }); } catch (e) {}
     window.SV._apply();
     hideLoader?.();
-    showToast?.('🔓 تم رفع الصيانة عن جميع الأقسام', 'success');
+    window.toast?.('🔓 تم رفع الصيانة عن جميع الأقسام', 'success');
     sv3_setTab(window._svActiveTab || 'main');
     _sv3_updateStats();
   };
@@ -666,7 +666,7 @@
     try { await db.collection(FS_COL).doc(FS_DOC).set(window.SV._data, { merge: true }); } catch (e) {}
     window.SV._apply();
     hideLoader?.();
-    showToast?.('🙈 تم إخفاء جميع الميزات', 'error');
+    window.toast?.('🙈 تم إخفاء جميع الميزات', 'error');
     sv3_setTab(window._svActiveTab || 'main');
     _sv3_updateStats();
   };
@@ -679,12 +679,12 @@
       const row = document.getElementById('sv-msg-row-' + baseKey) || document.getElementById('sv3-msg-row-' + baseKey);
       if (row) row.style.display = window.SV.get(key) ? '' : 'none';
     }
-    showToast?.(window.SV.get(key) ? '✅ تم التفعيل' : '🙈 تم الإخفاء', 'success');
+    window.toast?.(window.SV.get(key) ? '✅ تم التفعيل' : '🙈 تم الإخفاء', 'success');
   };
 
   window.svSaveMsg = async function (key, msg) {
     await window.SV.set(key + '_maint_msg', msg);
-    showToast?.('✅ تم حفظ الرسالة', 'success');
+    window.toast?.('✅ تم حفظ الرسالة', 'success');
   };
 
   window.svToggleFullMaint = async function (chkEl) {
@@ -729,14 +729,14 @@
         : 'المنصة تعمل بشكل طبيعي — التغييرات الجزئية أدناه فقط تؤثر';
     }
     if (wrap) wrap.style.display = val ? '' : 'none';
-    showToast?.(val ? '🔴 المنصة أُغلقت للصيانة' : '🟢 المنصة مفتوحة للمستخدمين', val ? 'error' : 'success');
+    window.toast?.(val ? '🔴 المنصة أُغلقت للصيانة' : '🟢 المنصة مفتوحة للمستخدمين', val ? 'error' : 'success');
   };
 
   window.svSaveFullMaintMsg = async function () {
     const inp = document.getElementById('sv-full-maint-msg-input');
     if (!inp) return;
     await window.SV.set('full_maint_msg', inp.value);
-    showToast?.('✅ تم حفظ الرسالة', 'success');
+    window.toast?.('✅ تم حفظ الرسالة', 'success');
   };
 
   console.log('[SV] نظام التحكم الشامل في المنصة جاهز 🛡️ v3.0');
