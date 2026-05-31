@@ -13,22 +13,24 @@
     driver: { label: '🚚 طلبات التوصيل', color: '#0d9488', items: [], count: 0 },
     wallet: { label: '💰 تنبيهات مالية', color: '#f59e0b', items: [], count: 0 },
     vendor: { label: '🏪 طلباتي',         color: '#10b981', items: [], count: 0 },
-    errors: { label: '🚨 أخطاء تقنية',   color: '#ef4444', items: [], count: 0 },
+    errors:   { label: '🚨 أخطاء تقنية',   color: '#ef4444', items: [], count: 0 },
+    activity: { label: '📋 نشاط المنصة',  color: '#a78bfa', items: [], count: 0 },
   };
 
   const SOURCE_META = {
-    live:   { label: 'حيّة',       icon: '🛎️' },
-    notif:  { label: 'إشعاراتي',   icon: '📨' },
-    driver: { label: 'توصيل',      icon: '🚚' },
-    wallet: { label: 'مالية',      icon: '💰' },
-    vendor: { label: 'طلباتي',     icon: '🏪' },
-    errors: { label: 'أخطاء',      icon: '🚨' },
+    live:     { label: 'حيّة',         icon: '🛎️' },
+    notif:    { label: 'إشعاراتي',     icon: '📨' },
+    driver:   { label: 'توصيل',        icon: '🚚' },
+    wallet:   { label: 'مالية',        icon: '💰' },
+    vendor:   { label: 'طلباتي',       icon: '🏪' },
+    errors:   { label: 'أخطاء',        icon: '🚨' },
+    activity: { label: 'نشاط المنصة',  icon: '📋' },
   };
 
   /* ── Role → relevant sources ───────────────────────────────── */
   const ROLE_SOURCES = {
-    admin:    ['live', 'notif', 'driver', 'wallet', 'errors'],
-    staff:    ['live', 'notif', 'wallet', 'errors'],
+    admin:    ['live', 'notif', 'driver', 'wallet', 'errors', 'activity'],
+    staff:    ['live', 'notif', 'wallet', 'errors', 'activity'],
     vendor:   ['vendor', 'notif'],
     provider: ['vendor', 'notif'],
     driver:   ['driver', 'notif'],

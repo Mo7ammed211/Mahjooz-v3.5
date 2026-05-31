@@ -163,6 +163,9 @@ window.renderAdmin = function () {
           urgent: (() => { try { return (window.AppData?.orders||[]).some(o=>o.status==='no_providers'||o.status==='no_drivers'); } catch(e){ return false; } })()
         },
         { k: 'free_shipping',    icon: '🚚', label: 'التوصيل المجاني',   desc: 'شروط الحصول على توصيل مجاني لكل قسم' },
+        { k: 'platform_activity', icon: '📋', label: 'سجل نشاط المنصة',       desc: 'جدول زمني شامل لجميع الأحداث والإجراءات على المنصة',
+          badge: (() => { try { const ls = parseInt(localStorage.getItem('pal_seen_ts')||'0',10); const logs = JSON.parse(localStorage.getItem('mahjooz_error_log')||'[]'); return null; } catch(e){ return null; } })()
+        },
         { k: 'error_dashboard',  icon: '🚨', label: 'لوحة الأخطاء التقنية',   desc: 'مراقبة فورية لجميع الأخطاء والتحذيرات في المنصة',
           badge: (() => { try { const logs = JSON.parse(localStorage.getItem('mahjooz_error_log') || '[]'); const c = logs.filter(l => l.type === 'error' || l.type === 'rejection').length; return c || null; } catch(e){ return null; } })(),
           urgent: (() => { try { const logs = JSON.parse(localStorage.getItem('mahjooz_error_log') || '[]'); return logs.some(l => l.type === 'error' || l.type === 'rejection'); } catch(e){ return false; } })()
@@ -275,6 +278,7 @@ window.renderAdmin = function () {
           ${activeTab === 'free_shipping'       ? (typeof renderAdminFreeShipping === 'function' ? renderAdminFreeShipping() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل نظام التوصيل المجاني...</div>') : ''}
           ${activeTab === 'routing_timeouts'    ? (typeof renderAdminRoutingTimeouts === 'function' ? renderAdminRoutingTimeouts() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل إعدادات الـ Timeout...</div>') : ''}
           ${activeTab === 'stalled_orders'     ? (typeof renderAdminStalledOrders === 'function' ? renderAdminStalledOrders() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل الطلبات المتوقفة...</div>') : ''}
+          ${activeTab === 'platform_activity' ? (typeof renderAdminPlatformActivity === 'function' ? renderAdminPlatformActivity() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل سجل النشاط...</div>') : ''}
           ${activeTab === 'error_dashboard'   ? (typeof renderAdminErrorDashboard === 'function' ? renderAdminErrorDashboard() : '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ جاري تحميل لوحة الأخطاء...</div>') : ''}
         </main>
       </div>

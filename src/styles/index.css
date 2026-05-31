@@ -3,6 +3,7 @@
 @import "./components/pwa-install.css";
 @import "./components/booking-date-picker.css";
 @import "./components/error-dashboard.css";
+@import "./components/platform-activity.css";
 
 /* --- base.css --- */
 :root {
