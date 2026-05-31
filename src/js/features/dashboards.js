@@ -16,6 +16,24 @@ function _renderRentalStoresTab(catId) {
   }
 }
 
+// ─── خريطة التبويب ← القائمة الأم ──────────────────────────────
+function _adminHubForTab(tab) {
+  if (tab.startsWith('rental_stores_')) return 'hub_systems';
+  const m = {
+    dashboard:'hub_stats', reports:'hub_stats', advance_stats:'hub_stats', advanced:'hub_stats', driver_performance:'hub_stats',
+    sys_catalog:'hub_systems', sys_bookings:'hub_systems', sys_professions:'hub_systems', sys_services:'hub_systems',
+    sys_stores:'hub_systems', sys_digital:'hub_systems', sys_offers:'hub_systems', sys_visibility:'hub_systems',
+    orders:'hub_ops', ads:'hub_ops', live_tracking:'hub_ops', availability_monitor:'hub_ops', provider_svcs:'hub_ops',
+    direct_routing:'hub_ops', provider_groups:'hub_ops',
+    wallet:'hub_finance', wallet_audit:'hub_finance', banks:'hub_finance',
+    cms_banners:'hub_content', cms_texts:'hub_content', cms_pages:'hub_content',
+    users:'hub_users', permissions:'hub_users', providers_database:'hub_users', drivers_database:'hub_users',
+    ph17settings:'hub_settings', signup_settings:'hub_settings', delivery_pricing:'hub_settings',
+    delivery_addresses:'hub_settings', login_settings:'hub_settings', regions:'hub_settings',
+  };
+  return m[tab] || 'hub_stats';
+}
+
 // ─── Hub Page Renderer ────────────────────────────────────────
 function _renderHubPage(hubId, groups) {
   const hub = groups.find(g => g.id === hubId);
@@ -204,6 +222,7 @@ window.renderAdmin = function () {
         </aside>
 
         <main class="admin-main">
+          ${!activeTab.startsWith('hub_') ? `<div style="margin-bottom:16px"><button class="back-btn" onclick="setAdminTab('${_adminHubForTab(activeTab)}')">→ رجوع للقائمة</button></div>` : ''}
           ${activeTab.startsWith('hub_')        ? _renderHubPage(activeTab, groups) : ''}
           ${activeTab === 'dashboard'            ? renderAdminDash() : ''}
           ${activeTab === 'users'               ? renderAdminUsers() : ''}
@@ -1983,12 +2002,18 @@ function renderVendor() {
           <button class="sidebar-footer-notif" onclick="closeAdminSidebar();navigate('notifications')">مركز الإشعارات</button>
         </div>
       </aside>
-      <main class="admin-main">${content}</main>
+      <main class="admin-main">
+        <div style="margin-bottom:12px">
+          <button class="back-btn" onclick="navigate('home')">→ الرئيسية</button>
+        </div>
+        ${content}
+      </main>
     </div>
   </div>`;
 }
 async function setVendorTab(tab) {
-  State.vendorTab = tab; await render();
+  State.vendorTab = tab;
+  await navigate('vendor', {tab});
 }
 
 function renderVendorOrders() {
@@ -2175,12 +2200,18 @@ function renderDriver() {
           <button class="sidebar-footer-notif" onclick="closeAdminSidebar();navigate('notifications')">مركز الإشعارات</button>
         </div>
       </aside>
-      <main class="admin-main">${content}</main>
+      <main class="admin-main">
+        <div style="margin-bottom:12px">
+          <button class="back-btn" onclick="navigate('home')">→ الرئيسية</button>
+        </div>
+        ${content}
+      </main>
     </div>
   </div>`;
 }
 async function setDriverTab(tab) {
-  State.driverTab = tab; await render();
+  State.driverTab = tab;
+  await navigate('driver', {tab});
 }
 
 function renderDriverOrders() {
@@ -2557,6 +2588,9 @@ window.renderStaff = function() {
         </div>
       </aside>
       <main class="admin-main">
+        <div style="margin-bottom:12px">
+          <button class="back-btn" onclick="navigate('home')">→ الرئيسية</button>
+        </div>
         <div class="admin-content-card">
           ${content}
         </div>

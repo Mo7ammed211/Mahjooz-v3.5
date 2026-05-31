@@ -715,6 +715,7 @@ function renderMyWallet() {
 
   return `<div id="app-content">
     <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+      <button class="back-btn" onclick="goBack('home')">→ رجوع</button>
       <h1>💰 محفظتي — ${bal.toLocaleString('ar-YE')} ريال</h1>
       <button class="btn btn-secondary btn-sm" onclick="ph6_generateStatement && ph6_generateStatement(State.currentUser.uid||State.currentUser.id, 90)">📄 تحميل كشف PDF</button>
     </div>

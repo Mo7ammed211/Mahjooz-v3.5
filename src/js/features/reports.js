@@ -462,6 +462,7 @@ const reportsManager = new ReportsManager();
 function renderReportsPage() {
   return `
   <div class="reports-page">
+    <div style="padding:8px 0 0"><button class="back-btn" onclick="goBack('admin')">→ رجوع</button></div>
     <div class="reports-header">
       <h2>📊 التقارير والتحليلات</h2>
       <div class="date-range-selector">

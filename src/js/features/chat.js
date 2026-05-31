@@ -337,6 +337,7 @@ function renderCustomerChatPage() {
   
   return `
   <div class="chat-page">
+    <div style="padding:8px 16px 0"><button class="back-btn" onclick="goBack('home')">→ رجوع</button></div>
     <div class="chat-container">
       <!-- Tickets List -->
       <div class="tickets-panel">
@@ -393,6 +394,7 @@ function renderCustomerChatPage() {
 function renderSupportDashboard() {
   return `
   <div class="support-dashboard">
+    <div style="padding:8px 0 0"><button class="back-btn" onclick="goBack('admin')">→ رجوع</button></div>
     <div class="dashboard-header">
       <h2>🎧 لوحة الدعم الفني</h2>
       <div class="support-stats" id="support-stats">

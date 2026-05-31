@@ -120,7 +120,8 @@ window.ph_offersRenderPage = function () {
   const totalSavings = filtered.reduce((s, o) => s + Math.max(0, (o.originalPrice || 0) - (o.discountedPrice || 0)), 0);
 
   return `<div id="app-content" style="padding-bottom:80px">
-    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(139,92,246,0.07),rgba(16,185,129,0.05));padding:50px 20px 36px;text-align:center;border-radius:0 0 32px 32px;border-bottom:1px solid var(--glass-border);margin-top:-40px;margin-bottom:0">
+    <div style="padding:8px 16px 0"><button class="back-btn" onclick="goBack('home')">→ رجوع</button></div>
+    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.1),rgba(139,92,246,0.07),rgba(16,185,129,0.05));padding:50px 20px 36px;text-align:center;border-radius:0 0 32px 32px;border-bottom:1px solid var(--glass-border);margin-top:8px;margin-bottom:0">
       <div style="font-size:52px;margin-bottom:10px">🏷️</div>
       <h1 style="font-size:34px;font-weight:900;margin-bottom:8px;background:linear-gradient(135deg,#ef4444,#f59e0b,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">العروض والخصومات</h1>
       <p style="color:var(--text-secondary);font-size:15px;max-width:480px;margin:0 auto">أفضل العروض من الحجوزات والخدمات المهنية والمتاجر في مكان واحد</p>

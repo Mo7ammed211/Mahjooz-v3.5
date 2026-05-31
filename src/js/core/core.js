@@ -986,6 +986,15 @@ window.addEventListener('popstate', async (event) => {
   }
 });
 
+// ── دالة الرجوع العالمية (زر الهاتف + الأزرار اليدوية) ──
+window.goBack = function(fallback) {
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    navigate(fallback || 'home');
+  }
+};
+
 async function navigate(page, params = {}, replace = false) {
   State.currentPage = page; State.params = params; 
   if (page !== 'admin') {
@@ -997,6 +1006,8 @@ async function navigate(page, params = {}, replace = false) {
       params.tab = State.adminTab || 'hub_stats';
     }
   }
+  if (page === 'vendor' && params.tab) State.vendorTab = params.tab;
+  if (page === 'driver' && params.tab) State.driverTab = params.tab;
   
   if (!isNavigatingFromHistory) {
     const url = new URL(window.location);
