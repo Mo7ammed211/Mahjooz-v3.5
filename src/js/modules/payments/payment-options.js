@@ -383,39 +383,142 @@ window.viewDepositDetails = function(id) {
 window.approveDeposit = async function(depositId, orderId) {
   if (!confirm('هل أنت متأكد من الموافقة على هذا الإيداع وتأكيد الطلب؟')) return;
   showLoader('جاري التأكيد...');
-  
+
   try {
-    // 1. Update deposit status
-    await fsUpdate('bank_deposits', depositId, { status: 'approved' });
-    
-    // 2. Find order and update its status
-    const orderRef = AppData.orders.find(o => o.orderId === orderId);
+    const deposit = AppData.bankDeposits.find(d => d.id === depositId);
+
+    await fsUpdate('bank_deposits', depositId, {
+      status: 'approved',
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      approvedBy: State.currentUser?.displayName || State.currentUser?.name || State.currentUser?.email || 'الإدارة',
+    });
+
+    const orderRef = AppData.orders?.find(o => o.orderId === orderId);
     if (orderRef) {
       await fsUpdate('orders', orderRef.id, { paymentStatus: 'paid', status: 'accepted' });
-      // Notify user if possible
-      if (typeof notificationManager !== 'undefined') {
-         notificationManager.notifyUser(orderRef.customerId, 'تم تأكيد طلبك واستلام الإيداع بنجاح ✅');
-      }
     }
-    
-    toast('تم اعتماد الإيداع بنجاح', 'success');
+
+    /* ── إشعار الـ Firestore للعميل ── */
+    const customerId = deposit?.customerId || orderRef?.customerId;
+    if (customerId && typeof saveNotificationToFirestore === 'function') {
+      await saveNotificationToFirestore(customerId, {
+        title: '✅ تم قبول إيداعك وتأكيد طلبك!',
+        body:  `إيداعك بمبلغ ${(deposit?.amount || 0).toLocaleString('ar-YE')} ر.ي تم استلامه والموافقة عليه. رقم الطلب: ${orderId}`,
+        type:  'deposit_approved',
+        icon:  '✅',
+        data:  {
+          depositId,
+          orderId,
+          amount:   deposit?.amount || 0,
+          bankName: deposit?.bankName || '',
+        },
+      });
+    }
+
+    /* ── توست محلي في حال كان الأدمن وعميل واحد ── */
+    if (typeof notificationManager !== 'undefined') {
+      notificationManager.showNotification('✅ تم قبول الإيداع', {
+        body: `إيداع بمبلغ ${(deposit?.amount || 0).toLocaleString('ar-YE')} ر.ي — رقم الطلب: ${orderId}`,
+      });
+    }
+
+    toast('✅ تم اعتماد الإيداع وإشعار العميل بنجاح', 'success');
     closeModal();
     await loadAllData();
     await render();
   } catch(e) {
-    toast('حدث خطأ', 'error');
+    console.error('[approveDeposit]', e);
+    toast('حدث خطأ أثناء اعتماد الإيداع', 'error');
+  } finally {
+    hideLoader?.();
   }
-}
+};
 
 window.rejectDeposit = async function(depositId) {
-  if (!confirm('هل أنت متأكد من رفض هذا الإيداع؟')) return;
-  
-  await fsUpdate('bank_deposits', depositId, { status: 'rejected' });
-  toast('تم رفض الإيداع', 'info');
-  closeModal();
-  await loadAllData();
-  await render();
-}
+  const deposit = AppData.bankDeposits?.find(d => d.id === depositId);
+
+  /* ── نافذة سبب الرفض ── */
+  openModal(`
+    <div class="modal-header">
+      <h2 class="modal-title">❌ رفض الإيداع</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div style="padding:8px 0 16px;font-family:'Cairo',sans-serif">
+      <div style="background:rgba(239,68,68,0.08);border:1.5px solid rgba(239,68,68,0.25);border-radius:12px;padding:14px 16px;margin-bottom:18px;font-size:13px;color:#ef4444;font-weight:700">
+        ⚠️ سيتم إشعار العميل برفض الإيداع وعرض السبب له
+      </div>
+      ${deposit ? `
+      <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:var(--text-muted)">العميل</span>
+          <strong>${deposit.customerName || '—'}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:var(--text-muted)">المبلغ</span>
+          <strong style="color:#ef4444">${(deposit.amount||0).toLocaleString('ar-YE')} ر.ي</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:var(--text-muted)">رقم الطلب</span>
+          <strong>${deposit.orderId || '—'}</strong>
+        </div>
+      </div>` : ''}
+      <div class="form-group">
+        <label class="form-label">سبب الرفض <span style="color:var(--text-muted);font-weight:400">(اختياري — سيظهر للعميل)</span></label>
+        <textarea id="deposit-reject-reason"
+          class="form-control"
+          rows="3"
+          placeholder="مثال: الإيصال غير واضح، المبلغ غير متطابق، تم التحويل لحساب خاطئ..."
+          style="resize:vertical;font-family:'Cairo',sans-serif"></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px">
+        <button class="btn btn-danger" style="flex:1" onclick="confirmRejectDeposit('${depositId}')">❌ تأكيد الرفض وإشعار العميل</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">إلغاء</button>
+      </div>
+    </div>
+  `);
+};
+
+window.confirmRejectDeposit = async function(depositId) {
+  const reason = (document.getElementById('deposit-reject-reason')?.value || '').trim();
+  const deposit = AppData.bankDeposits?.find(d => d.id === depositId);
+
+  try {
+    await fsUpdate('bank_deposits', depositId, {
+      status:     'rejected',
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      rejectedBy: State.currentUser?.displayName || State.currentUser?.name || State.currentUser?.email || 'الإدارة',
+      rejectReason: reason || '',
+    });
+
+    /* ── إشعار الـ Firestore للعميل ── */
+    const customerId = deposit?.customerId;
+    if (customerId && typeof saveNotificationToFirestore === 'function') {
+      const bodyText = reason
+        ? `إيداعك بمبلغ ${(deposit?.amount || 0).toLocaleString('ar-YE')} ر.ي تم رفضه. السبب: ${reason}`
+        : `إيداعك بمبلغ ${(deposit?.amount || 0).toLocaleString('ar-YE')} ر.ي تم رفضه. يرجى التواصل مع الدعم.`;
+      await saveNotificationToFirestore(customerId, {
+        title: '❌ تم رفض إيداعك',
+        body:  bodyText,
+        type:  'deposit_rejected',
+        icon:  '❌',
+        data:  {
+          depositId,
+          orderId:    deposit?.orderId || '',
+          amount:     deposit?.amount  || 0,
+          rejectReason: reason,
+        },
+      });
+    }
+
+    toast('تم رفض الإيداع وإشعار العميل', 'info');
+    closeModal();
+    await loadAllData();
+    await render();
+  } catch(e) {
+    console.error('[rejectDeposit]', e);
+    toast('حدث خطأ أثناء رفض الإيداع', 'error');
+  }
+};
 
 
 // ─── CHECKOUT OVERRIDE ──────────────────────────────────
