@@ -25,17 +25,54 @@
 
   // ─── إضافة إدخال جديد ───────────────────────────────────────
   function _push(type, msg, stack) {
-    _logs.push({
+    const entry = {
       id:    Date.now() + Math.random(),
       ts:    Date.now(),
       type,
       msg:   String(msg).slice(0, 500),
       stack: stack ? String(stack).slice(0, 800) : '',
-    });
+    };
+    _logs.push(entry);
     if (_logs.length > MAX_LOGS) _logs = _logs.slice(-MAX_LOGS);
     _save();
     _refreshBadge();
-    _liveAppend(type, _logs[_logs.length - 1]);
+    _liveAppend(type, entry);
+    _sendBellNotif(entry);
+    _sendToast(entry);
+  }
+
+  // ─── إرسال إشعار في جرس الإشعارات الموحد ───────────────────
+  function _sendBellNotif(entry) {
+    if (typeof window.__unifiedNotif === 'undefined') return;
+    const role = (typeof State !== 'undefined' ? State : null)?.currentUser?.role;
+    if (role !== 'admin' && role !== 'staff') return;
+
+    const typeIcon  = entry.type === 'error' ? '🔴' : entry.type === 'rejection' ? '🟠' : '🟡';
+    const typeLabel = entry.type === 'error' ? 'خطأ' : entry.type === 'rejection' ? 'رفض غير معالج' : 'تحذير';
+    const time      = new Date(entry.ts).toLocaleTimeString('ar-SA', { hour12: false });
+
+    // نبني قائمة الإشعارات من السجل (آخر 30 فقط)
+    const recent = _logs.slice(-30).reverse();
+    const items  = recent.map(l => ({
+      icon:   l.type === 'error' ? '🔴' : l.type === 'rejection' ? '🟠' : '🟡',
+      title:  String(l.msg).slice(0, 80),
+      sub:    l.type === 'error' ? 'خطأ تقني' : l.type === 'rejection' ? 'رفض غير معالج' : 'تحذير',
+      time:   new Date(l.ts).toLocaleTimeString('ar-SA', { hour12: false }),
+      nav:    'admin',
+      unread: true,
+    }));
+
+    const count = _logs.filter(l => l.type === 'error' || l.type === 'rejection').length;
+    window.__unifiedNotif.update('errors', items, count);
+  }
+
+  // ─── إظهار Toast فوري (للأخطاء والرفض فقط — بدون تحذيرات) ─
+  function _sendToast(entry) {
+    if (entry.type === 'warn') return;
+    const role = (typeof State !== 'undefined' ? State : null)?.currentUser?.role;
+    if (role !== 'admin' && role !== 'staff') return;
+    const short = String(entry.msg).slice(0, 70);
+    window.toast?.(`🚨 ${short}`, 'error');
   }
 
   // ─── اعتراض console.error ────────────────────────────────────
