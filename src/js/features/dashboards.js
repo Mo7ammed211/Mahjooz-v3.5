@@ -158,9 +158,9 @@ window.renderAdmin = function () {
         { k: 'ph17settings',     icon: '⚙️', label: 'الإعدادات العامة', desc: 'إعدادات النظام الشاملة' },
         { k: 'direct_routing',   icon: '🚦', label: 'التوجيه المباشر',  desc: 'ضبط توزيع الطلبات تلقائياً' },
         { k: 'free_shipping',    icon: '🚚', label: 'التوصيل المجاني',   desc: 'شروط الحصول على توصيل مجاني لكل قسم' },
-        { k: 'sys_visibility',   icon: '🛡️', label: 'التحكم في الأقسام', desc: 'إظهار وإخفاء أقسام المنصة وصيانتها',
-          badge: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v2')||'{}'); const hidden = ['bookings','services','stores','digital','offers'].filter(k=>d[k]===false).length; const maint = ['bookings','services','stores','digital','offers'].filter(k=>!!d[k+'_maint']).length; return (hidden+maint)||null; } catch(e){ return null; } })(),
-          urgent: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v2')||'{}'); return !!d.full_maint; } catch(e){ return false; } })()
+        { k: 'sys_visibility',   icon: '🛡️', label: 'التحكم الشامل في المنصة', desc: 'إيقاف أو إخفاء أي قسم أو نظام أو ميزة في المنصة',
+          badge: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v3')||localStorage.getItem('sv_config_v2')||'{}'); const keys=['bookings','services','stores','digital','offers','wallet','coupons','loyalty','reviews','wishlist','self_pickup','live_tracking','notifications','delivery','cancellation','arboon','free_shipping','scheduling','share','deposits','refunds','ads','hero','featured','search','hotels','car_rental','flights','medical','halls','order_notes','driver_messaging','smart_alerts','analytics_dash','reports','bulk_import','ads_management','map_tracking','vendor_analytics','wallet_admin','section_control','region_picker']; const hidden=keys.filter(k=>d[k]===false).length; const maint=['bookings','services','stores','digital','offers','hotels','car_rental','flights','medical','halls'].filter(k=>!!d[k+'_maint']).length; return (hidden+maint)||null; } catch(e){ return null; } })(),
+          urgent: (() => { try { const d = JSON.parse(localStorage.getItem('sv_config_v3')||localStorage.getItem('sv_config_v2')||'{}'); return !!d.full_maint; } catch(e){ return false; } })()
         },
       ]
     },
